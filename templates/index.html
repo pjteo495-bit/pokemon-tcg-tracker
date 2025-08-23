@@ -133,6 +133,58 @@
   .timeframe-btn { background: var(--chip); color: var(--text); border: 1px solid var(--border); padding: 8px 16px; border-radius: 8px; cursor: pointer; }
   .timeframe-btn.active { background: var(--poke-blue); color: #fff; }
   .chart-container { position: relative; height: 400px; width: 100%; }
+
+  /* Mobile-friendly adjustments */
+  @media (max-width: 768px) {
+    .wrap {
+      padding: 15px;
+    }
+    .header {
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .logo h1 {
+      font-size: 22px; /* Smaller logo text */
+    }
+    .hero-title {
+      font-size: 32px; /* Smaller hero title */
+    }
+    .subtitle {
+      font-size: 16px;
+    }
+    .toolbar {
+      flex-direction: column; /* Stack search bar and buttons */
+    }
+    .search, .btn, .select {
+      width: 100%;
+    }
+    .nav-btn span {
+        display: none; /* Hide text on nav buttons, keep icon */
+    }
+    .nav-btn {
+        padding: 10px 12px;
+    }
+    .grid{
+        grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
+        gap: 10px;
+    }
+    .card img {
+        width: 100%;
+        height: auto;
+    }
+    .title {
+        font-size: 14px;
+        min-height: 3em;
+    }
+    .price {
+        font-size: 16px;
+    }
+    .view, .history-btn {
+        height: 38px;
+        padding: 0 12px;
+        font-size: 14px;
+    }
+  }
 </style>
 </head>
 <body>
@@ -144,8 +196,8 @@
         <h1>POKEGR</h1>
     </a>
     <div class="nav-buttons">
-        <a href="/tcg-tracker" class="nav-btn"><i class="fas fa-search"></i> TCG Tracker</a>
-        <a href="/top100" class="nav-btn"><i class="fas fa-fire"></i> Top 100</a>
+        <a href="/tcg-tracker" class="nav-btn"><i class="fas fa-search"></i> <span>TCG Tracker</span></a>
+        <a href="/top100" class="nav-btn"><i class="fas fa-fire"></i> <span>Top 100</span></a>
     </div>
   </header>
 
