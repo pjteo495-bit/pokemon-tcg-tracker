@@ -62,7 +62,7 @@ def top_100_page():
 
 @app.route("/api/market-status")
 def api_market_status():
-    history_dir = r"C:\Users\pjteo\Desktop\POKEGR_TCG_TRACKER\Greek_Prices_History"
+    history_dir = "Greek_Prices_History" # Use the relative path
     categories = {
         "Booster Packs": ["Booster Pack"],
         "Booster Box": ["Booster Box"],
@@ -171,7 +171,7 @@ def api_price_history():
     item_title = request.args.get("title", "").strip()
     if not item_title:
         return jsonify({"error": "Missing item title"}), 400
-    history_dir = r"C:\Users\pjteo\Desktop\POKEGR_TCG_TRACKER\Greek_Prices_History"
+    history_dir = "Greek_Prices_History" 
     price_history = []
     if not os.path.isdir(history_dir):
         return jsonify({"error": "History directory not found"}), 500
