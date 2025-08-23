@@ -31,7 +31,7 @@ def tcg_tracker_page():
 
 @app.route("/top100")
 def top_100_page():
-    trending_dir = r"C:\Users\pjteo\Desktop\POKEGR_TCG_TRACKER\Top 100 trending"
+    trending_dir = "Top 100 trending" # Use the relative path
     latest_file = None
     latest_time = 0
     if os.path.isdir(trending_dir):
