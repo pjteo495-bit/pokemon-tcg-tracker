@@ -13,7 +13,7 @@ except Exception:
 EXCEL_FILE = os.environ.get("GREEK_PRICES_FILE", "").strip()
 EXCEL_DIR = os.environ.get(
     "GREEK_PRICES_DIR",
-    r"C:\Users\pjteo\Desktop\POKEGR_TCG_TRACKER\greek prices"
+    "greek prices" # Use the relative path
 ).strip()
 
 # Deduplication is ON
