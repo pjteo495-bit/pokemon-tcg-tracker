@@ -16,7 +16,8 @@ EXCEL_DIR = os.environ.get(
     r"C:\Users\pjteo\Desktop\POKEGR_TCG_TRACKER\greek prices"
 ).strip()
 
-DEDUP = True  # exact de-dup with canonical URL + normalized title
+# Deduplication is ON
+DEDUP = True
 
 # ---------- State ----------
 _ITEMS = []
@@ -105,7 +106,6 @@ def _canon_url(u: str) -> str:
     return f"{host}{path}"
 
 def _normalize_row(row, default_source="bestprice"):
-    # Support your headers: item_title, website, product_url, image_url, price
     title_k = _pick(row, "title", "product", "name", "item_title")
     price_k = _pick(row, "price", "current_price", "amount", "lowest_price")
     img_k   = _pick(row, "image_url", "image", "img", "thumbnail")
@@ -121,7 +121,7 @@ def _normalize_row(row, default_source="bestprice"):
     price_text = _format_price_text(price_float) if price_float is not None else (str(price_raw or "").strip())
 
     src = (row.get(src_k) or "").strip().lower() if src_k else ""
-    if not src:  # infer from URL if not provided
+    if not src:
         src = _infer_source(url, default_source)
     if src.startswith("best"): src = "bestprice"
     if src.startswith("skr"):  src = "skroutz"
@@ -136,7 +136,6 @@ def _normalize_row(row, default_source="bestprice"):
         "price_float": price_float,
         "url": url,
         "source": src,
-        # helpers for dedup:
         "_k_title": _norm_title(title),
         "_k_url": _canon_url(url),
     }
@@ -169,7 +168,6 @@ def _load_items_from_file(path: str):
     dropped_no_title = dropped_no_url = 0
 
     for r in rows:
-        # quick guard to avoid losing rows due to odd column names
         if not ((r.get("item_title") or r.get("title") or r.get("product") or r.get("name"))):
             dropped_no_title += 1
             continue
@@ -184,11 +182,11 @@ def _load_items_from_file(path: str):
         seen = set()
         deduped = []
         for it in items:
-            key = (it["_k_title"], it["_k_url"], it["price"])  # Title + CanonURL + Price
+            # --- FIX: Deduplication key now includes title, url, AND price ---
+            key = (it["_k_title"], it["_k_url"], it["price"])
             if key in seen:
                 continue
             seen.add(key)
-            # drop helper keys
             it.pop("_k_title", None)
             it.pop("_k_url", None)
             deduped.append(it)
