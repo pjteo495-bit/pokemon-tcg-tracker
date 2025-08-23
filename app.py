@@ -10,6 +10,23 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__, template_folder="templates")
 
+# --- Helper function to parse dates from filenames ---
+def parse_date_from_filename(name):
+    """Tries to parse a date from a filename string using common formats."""
+    # List of date formats to try
+    formats_to_try = [
+        "%d %m %Y",      # e.g., "24 08 2025"
+        "%Y-%m-%d",      # e.g., "2025-08-24"
+        "%d-%m-%Y",      # e.g., "24-08-2025"
+        "%m-%d-%Y",      # e.g., "08-24-2025"
+    ]
+    for fmt in formats_to_try:
+        try:
+            return datetime.strptime(name, fmt)
+        except ValueError:
+            continue
+    return None
+
 # --- Load local datasets ---
 try:
     from data_loader import load_data
@@ -21,7 +38,6 @@ except Exception as e:
 # --- App Routes ---
 @app.route("/")
 def index():
-    # --- CHANGE: Added current date to be passed to the template ---
     current_date = datetime.now().strftime("%d %B %Y")
     return render_template("index.html", base_url=request.url_root, current_date=current_date)
 
@@ -81,12 +97,15 @@ def api_market_status():
 
     for file_path in files:
         try:
-            file_date = datetime.strptime(os.path.splitext(os.path.basename(file_path))[0], "%d %m %Y")
-            if file_date >= cutoff_date:
-                df = pd.read_csv(file_path) if file_path.endswith('.csv') else pd.read_excel(file_path)
-                df.columns = [str(c).lower().strip() for c in df.columns]
-                df['date'] = file_date
-                all_data.append(df)
+            # --- FIX: Use the new flexible date parsing function ---
+            file_datetime = parse_date_from_filename(os.path.splitext(os.path.basename(file_path))[0])
+            if not file_datetime or file_datetime < cutoff_date:
+                continue
+
+            df = pd.read_csv(file_path) if file_path.endswith('.csv') else pd.read_excel(file_path)
+            df.columns = [str(c).lower().strip() for c in df.columns]
+            df['date'] = file_datetime
+            all_data.append(df)
         except Exception as e:
             print(f"Skipping history file {file_path}: {e}")
             continue
@@ -180,7 +199,12 @@ def api_price_history():
         try:
             filename = os.path.basename(file_path)
             date_str = os.path.splitext(filename)[0]
-            file_date = datetime.strptime(date_str, "%d %m %Y").strftime("%Y-%m-%d")
+            # --- FIX: Use the new flexible date parsing function ---
+            file_datetime = parse_date_from_filename(date_str)
+            if not file_datetime:
+                continue # Skip if date format is not recognized
+
+            file_date = file_datetime.strftime("%Y-%m-%d")
             df = pd.read_csv(file_path) if file_path.endswith('.csv') else pd.read_excel(file_path)
             df.columns = [str(c).lower().strip() for c in df.columns]
             title_col = next((c for c in ['item_title', 'title', 'name'] if c in df.columns), None)
