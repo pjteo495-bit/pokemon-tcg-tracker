@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>POKEGR TCG TRACKER</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+<style>
+  :root{
+    --poke-blue:#2A75BB;
+    --poke-yellow:#FFCC00;
+    --poke-red:#EE1515;
+    --poke-green: #4DAD5B;
+    --bg:#0b1220;
+    --panel:#121a2b;
+    --card:#16223a;
+    --text:#eaf1ff;
+    --muted:#a7b6d6;
+    --border:#23314c;
+    --chip:#1c2b48;
+    --shadow:0 8px 26px rgba(0,0,0,.30);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 10% 20%, rgba(42, 117, 187, 0.15), transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(238, 21, 21, 0.1), transparent 50%),
+      var(--bg);
+    color:var(--text); font-family:'Poppins', system-ui, sans-serif;
+    min-height:100vh; overflow-x: hidden;
+  }
+  .wrap{max-width:1200px;margin:0 auto;padding:22px 16px 42px}
+  
+  /* --- Unified Header --- */
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+  .poke-ball {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, #fff 0 22%, #000 23% 29%, #fff 30% 55%, transparent 56%), linear-gradient(#fff 50%, #000 50% 54%, var(--poke-red) 54%);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.35);
+  }
+  .logo h1 { margin: 0; font-size: 28px; font-weight: 800; color: var(--text); }
+  .nav-buttons { display: flex; gap: 15px; }
+  .nav-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px; background: var(--poke-blue); color: white;
+    border-radius: 12px; text-decoration: none; font-weight: 700;
+    transition: all .2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .nav-btn:hover { background: #1b4f8e; transform: translateY(-2px); }
+
+  /* Hero Section */
+  .hero{ 
+    background: linear-gradient(135deg, rgba(27, 79, 142, 0.5), rgba(42, 117, 187, 0.3)), url('https://www.transparenttextures.com/patterns/stardust.png');
+    border:1px solid var(--border); box-shadow:var(--shadow);
+    border-radius:18px; padding: 24px; text-align: center;
+  }
+  .hero-title {
+      font-size: 40px;
+      font-weight: 800;
+      background: linear-gradient(to right, #FFCC00, #FFDE59);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0 0 8px 0;
+  }
+  .subtitle{color:rgba(255,255,255,.95);font-weight:500;letter-spacing:.4px; margin-bottom: 24px;}
+  
+  .market-status { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin: 24px 0; }
+  .market-title { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 8px; }
+  .market-date { font-size: 14px; font-weight: 500; text-align: center; color: var(--muted); margin-bottom: 16px; }
+  .market-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+  .market-tag { padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 14px; text-decoration: none; transition: transform 0.2s ease; cursor: pointer;}
+  .market-tag:hover { transform: translateY(-2px); }
+  .status-green { background-color: rgba(77, 173, 91, 0.2); color: #34D399; }
+  .status-red { background-color: rgba(238, 21, 21, 0.2); color: #F87171; }
+  .status-yellow { background-color: rgba(255, 204, 0, 0.2); color: #FFCC00; }
+  .market-tag .explanation { font-weight: 500; font-size: 12px; opacity: 0.8; margin-left: 4px; }
+  
+  .toolbar{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;}
+  .search{position:relative;flex:1;min-width:280px;max-width:720px}
+  .search input{ width:100%;height:52px;border-radius:12px;border:1px solid var(--border);
+    background:var(--panel); color:#fff; padding:0 18px; font-size:16px; outline:none; }
+  .search input::placeholder{ color:var(--muted); }
+  .btn{ height:52px;border:none;border-radius:12px;cursor:pointer; padding:0 24px;font-weight:800;
+    background:linear-gradient(135deg, var(--poke-yellow), #ffc400); color:#1a237e; box-shadow:0 6px 18px rgba(0,0,0,.25); }
+  .select{ height:52px;border-radius:12px;border:1px solid var(--border);
+    background:var(--panel);color:#fff;padding:0 12px;font-weight:700; }
+  .select, .select option { color:#fff; background:var(--panel); }
+  .suggest{ position:absolute;left:0;right:0;top:56px;z-index:100; background:var(--panel);border:1px solid var(--border);
+    border-radius:12px;box-shadow:var(--shadow); display:none;max-height:420px;overflow:auto }
+  .sug-item{ display:grid;grid-template-columns:50px 1fr auto;gap:12px;align-items:center;
+    padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer; transition: background 0.2s ease; }
+  .sug-item:hover{ background:var(--chip) }
+  .sug-item img{width:50px;height:50px;object-fit:contain;background:#fff;border-radius:10px}
+  .content{max-width:1200px;margin:20px auto 0}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:18px}
+  .card{ background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px;
+    box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;gap:10px; transition: all 0.2s ease; }
+  .card:hover { transform: translateY(-4px); border-color: var(--poke-blue); }
+  .imgwrap{display:block;width:100%;text-align:center}
+  .card img{width:210px;height:210px;object-fit:contain;background:#fff;border-radius:12px;}
+  .title{font-weight:700;text-align:center;line-height:1.4;min-height:3.5em;color:#fff}
+  .price{color:var(--poke-yellow);font-weight:800;font-size:20px}
+  .card-buttons { display: flex; gap: 10px; margin-top: auto; }
+  .view, .history-btn { background:var(--poke-blue);color:#fff;border:none;border-radius:12px;height:44px;padding:0 16px;
+    font-weight:700;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center; transition: all 0.2s ease;}
+  .history-btn { background: var(--chip); }
+  .view:hover, .history-btn:hover { filter: brightness(1.15); }
+  .loadwrap{display:flex;justify-content:center;margin-top:22px;gap:12px;align-items:center}
+  .loadmore{background:linear-gradient(135deg, var(--poke-blue), #1b4f8e);color:#fff;border:none;border-radius:12px;height:46px;padding:0 18px;font-weight:800;cursor:pointer;display:none;}
+  .loadmore:hover{ filter:brightness(1.05) }
+  .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: var(--poke-yellow); animation: spin 1s linear infinite; display: none; }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; z-index: 1000; }
+  .modal-content { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 24px; width: 90%; max-width: 800px; box-shadow: var(--shadow); }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .modal-title { font-size: 24px; font-weight: 700; }
+  .modal-close { background: none; border: none; font-size: 24px; color: var(--muted); cursor: pointer; }
+  .modal-body { }
+  .timeframe-btns { display: flex; gap: 10px; margin-bottom: 16px; }
+  .timeframe-btn { background: var(--chip); color: var(--text); border: 1px solid var(--border); padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+  .timeframe-btn.active { background: var(--poke-blue); color: #fff; }
+  .chart-container { position: relative; height: 400px; width: 100%; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="header">
+    <a href="/" class="logo">
+        <div class="poke-ball"></div>
+        <h1>POKEGR</h1>
+    </a>
+    <div class="nav-buttons">
+        <a href="/tcg-tracker" class="nav-btn"><i class="fas fa-search"></i> TCG Tracker</a>
+        <a href="/top100" class="nav-btn"><i class="fas fa-fire"></i> Top 100</a>
+    </div>
+  </header>
+
+  <div class="hero">
+    <h2 class="hero-title">POKEGR TCG TRACKER</h2>
+    <div class="subtitle">Catch the best Greek Pokémon TCG prices — fast.</div>
+
+    <div id="marketStatus" class="market-status" style="display: none;">
+        <h3 class="market-title">GREEK MARKET STATUS</h3>
+        <p class="market-date">{{ current_date }}</p>
+        <div id="marketGrid" class="market-grid">
+        </div>
+    </div>
+
+    <div class="toolbar">
+      <div class="search">
+        <input id="q" type="text" placeholder="Search products, boxes, sets…" autocomplete="off"/>
+        <div id="suggest" class="suggest" aria-hidden="true"></div>
+      </div>
+      <button class="btn" id="btnSearch">Search</button>
+      <select id="sort" class="select">
+        <option value="bestsellers">Bestsellers</option>
+        <option value="price_asc">Price: Low to High</option>
+        <option value="price_desc">Price: High to Low</option>
+        <option value="alpha">Alphabetically</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="content">
+    <div id="grid" class="grid" aria-live="polite"></div>
+    <div class="loadwrap">
+      <button id="loadMore" class="loadmore">Load More</button>
+      <div id="loadingSpinner" class="spinner" aria-hidden="true"></div>
+    </div>
+  </div>
+</div>
+
+<div id="historyModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 id="modalTitle" class="modal-title">Price History</h2>
+      <button id="modalClose" class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="timeframe-btns">
+        <button class="timeframe-btn active" data-range="1">1M</button>
+        <button class="timeframe-btn" data-range="3">3M</button>
+        <button class="timeframe-btn" data-range="6">6M</button>
+        <button class="timeframe-btn" data-range="12">1Y</button>
+      </div>
+      <div class="chart-container">
+          <canvas id="priceChart"></canvas>
+      </div>
+      <div id="modalLoader" class="spinner" style="margin: 40px auto;"></div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  const BASE_URL = '{{ base_url }}';
+  const grid = document.getElementById('grid');
+  const sortSel = document.getElementById('sort');
+  const qInput = document.getElementById('q');
+  const btnSearch = document.getElementById('btnSearch');
+  const suggestBox = document.getElementById('suggest');
+  const loadMoreBtn = document.getElementById('loadMore');
+  const loadingSpinner = document.getElementById('loadingSpinner');
+  const marketStatusContainer = document.getElementById('marketStatus');
+  const marketGrid = document.getElementById('marketGrid');
+  const historyModal = document.getElementById('historyModal');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalClose = document.getElementById('modalClose');
+  const modalLoader = document.getElementById('modalLoader');
+  const chartCanvas = document.getElementById('priceChart');
+  const chartContainer = chartCanvas.parentElement;
+  const timeframeBtns = document.querySelectorAll('.timeframe-btn');
+
+  let currentQuery = '';
+  let currentPage = 1;
+  let isLoading = false;
+  let lastHasMore = false;
+  let priceChart = null;
+  let currentHistoryData = [];
+
+  function cardHTML(p){
+    const safeTitle = (p.title || '').replace(/"/g, '&quot;');
+    return `
+      <div class="card">
+        <a class="imgwrap" href="${p.url || '#'}" target="_blank" rel="noopener">
+          <img src="${p.image_url || ''}" loading="lazy" alt="${safeTitle}" onerror="this.style.visibility='hidden'">
+        </a>
+        <div class="title">${safeTitle}</div>
+        <div class="price">${p.price || ''}</div>
+        <div class="card-buttons">
+            <a class="view" href="${p.url || '#'}" target="_blank" rel="noopener">View</a>
+            <button class="history-btn" data-title="${safeTitle}">History</button>
+        </div>
+      </div>`;
+  }
+
+  function render(items, append=false){
+    if(!append){ grid.innerHTML=''; }
+    if (items && items.length){
+      grid.insertAdjacentHTML('beforeend', items.map(cardHTML).join(''));
+    }
+    loadingSpinner.style.display = 'none';
+    isLoading = false;
+    loadMoreBtn.style.display = lastHasMore ? 'inline-block' : 'none';
+  }
+
+  async function fetchMarketStatus() {
+      try {
+          const url = new URL('api/market-status', BASE_URL);
+          const response = await fetch(url);
+          if (!response.ok) return;
+          const data = await response.json();
+          if (data && data.length) {
+              marketGrid.innerHTML = data.map(item => {
+                  let searchTerm = item.category;
+                  if (searchTerm.endsWith('s')) {
+                      searchTerm = searchTerm.slice(0, -1);
+                  }
+                  return `
+                  <a href="#" class="market-tag status-${item.status}" data-category="${searchTerm}">
+                      ${item.category} <span class="explanation">${item.explanation}</span>
+                  </a>`;
+              }).join('');
+              marketStatusContainer.style.display = 'block';
+          }
+      } catch (e) {
+          console.error("Failed to fetch market status:", e);
+      }
+  }
+
+  async function fetchPage(page=1, append=false) {
+    if (isLoading) return;
+    isLoading = true;
+    loadingSpinner.style.display = 'block';
+    loadMoreBtn.style.display = 'none';
+    const isHomepage = !currentQuery.trim();
+    const path = isHomepage 
+      ? `api/home?sort=${encodeURIComponent(sortSel.value)}&page=${page}`
+      : `api/search?q=${encodeURIComponent(currentQuery)}&page=${page}&sort=${encodeURIComponent(sortSel.value)}`;
+    const fullUrl = new URL(path, BASE_URL);
+    try {
+        const r = await fetch(fullUrl);
+        const data = await r.json();
+        lastHasMore = !!data.has_more;
+        render(data.items || [], append);
+        currentPage = page;
+    } catch (e) {
+        console.error("Fetch failed:", e);
+    }
+  }
+
+  async function fetchHistory(title) {
+      const url = new URL(`api/price-history?title=${encodeURIComponent(title)}`, BASE_URL);
+      const response = await fetch(url);
+      if (!response.ok) {
+          throw new Error('Failed to fetch price history');
+      }
+      return await response.json();
+  }
+
+  function doSearchFromInput(){
+    currentQuery = qInput.value.trim();
+    currentPage = 1;
+    suggestBox.style.display='none';
+    fetchPage(1, false);
+  }
+  
+  async function showSuggest(){
+    const q = qInput.value.trim();
+    if(q.length<2){ suggestBox.style.display='none'; return; }
+    try{
+      const suggestUrl = new URL(`api/suggest?q=${encodeURIComponent(q)}`, BASE_URL);
+      const r = await fetch(suggestUrl);
+      const data = await r.json();
+      const items = (data.items || []).slice(0, 12);
+      if(!items.length){ suggestBox.style.display='none'; return; }
+      suggestBox.innerHTML = items.map(it=>`
+        <div class="sug-item" data-title="${(it.title||'').replace(/"/g,'&quot;')}">
+          <img src="${it.image_url||''}" alt="">
+          <div>${it.title||''}</div>
+          <div>${it.price||''}</div>
+        </div>`).join('');
+      suggestBox.style.display='block';
+    }catch(e){ console.error(e); }
+  }
+
+  function processDataForChart(data, months) {
+      const now = new Date();
+      const cutoff = new Date();
+      cutoff.setMonth(now.getMonth() - months);
+      const filtered = data.filter(d => new Date(d.date) >= cutoff);
+      if (months === 1) {
+          return filtered.map(d => ({ x: d.date, y: d.price }));
+      } else {
+          const monthly = {};
+          filtered.forEach(d => {
+              const month = d.date.substring(0, 7);
+              if (!monthly[month]) {
+                  monthly[month] = { sum: 0, count: 0 };
+              }
+              monthly[month].sum += d.price;
+              monthly[month].count++;
+          });
+          return Object.keys(monthly).map(month => ({
+              x: `${month}-01`,
+              y: monthly[month].sum / monthly[month].count
+          }));
+      }
+  }
+
+  function drawChart(data, timeframe) {
+      if (priceChart) {
+          priceChart.destroy();
+      }
+      priceChart = new Chart(chartCanvas, {
+          type: 'line',
+          data: {
+              datasets: [{
+                  label: 'Price (€)',
+                  data: processDataForChart(data, timeframe),
+                  borderColor: 'rgba(255, 204, 0, 1)',
+                  backgroundColor: 'rgba(255, 204, 0, 0.2)',
+                  tension: 0.1, fill: true, pointBackgroundColor: 'rgba(255, 204, 0, 1)', pointRadius: 4,
+              }]
+          },
+          options: {
+              responsive: true, maintainAspectRatio: false,
+              scales: {
+                  x: {
+                      type: 'time', time: { unit: timeframe === 1 ? 'day' : 'month' },
+                      ticks: { color: '#a7b6d6', font: { size: 12, family: 'Poppins' }, maxTicksLimit: 10 },
+                      grid: { color: 'rgba(255,255,255,0.1)' }
+                  },
+                  y: {
+                      ticks: { color: '#a7b6d6', font: { size: 12, family: 'Poppins' }, callback: value => `€${value.toFixed(2)}` },
+                      grid: { color: 'rgba(255,255,255,0.1)' }
+                  }
+              },
+              plugins: {
+                  legend: { display: false },
+                  tooltip: {
+                      backgroundColor: '#16223a', titleColor: '#eaf1ff', bodyColor: '#a7b6d6',
+                      titleFont: { size: 14, family: 'Poppins' }, bodyFont: { size: 12, family: 'Poppins' },
+                      padding: 10, cornerRadius: 8, displayColors: false,
+                  }
+              }
+          }
+      });
+  }
+
+  async function openHistoryModal(title) {
+      historyModal.style.display = 'flex';
+      modalTitle.textContent = `Price History for ${title}`;
+      modalLoader.style.display = 'block';
+      chartContainer.style.display = 'none';
+      if(priceChart) priceChart.destroy();
+      try {
+          currentHistoryData = await fetchHistory(title);
+          if (currentHistoryData.length === 0) {
+              modalLoader.parentElement.innerHTML += '<p id="noDataMsg" style="text-align: center; color: var(--muted);">No price history available for this item.</p>';
+          } else {
+              chartContainer.style.display = 'block';
+              const noDataMsg = document.getElementById('noDataMsg');
+              if(noDataMsg) noDataMsg.remove();
+              drawChart(currentHistoryData, 1);
+          }
+      } catch (error) {
+          console.error(error);
+          modalLoader.parentElement.innerHTML += '<p id="noDataMsg" style="text-align: center; color: var(--poke-red);">Could not load price history.</p>';
+      } finally {
+          modalLoader.style.display = 'none';
+      }
+  }
+
+  function closeHistoryModal() {
+      historyModal.style.display = 'none';
+      const noDataMsg = document.getElementById('noDataMsg');
+      if(noDataMsg) noDataMsg.remove();
+  }
+
+  loadMoreBtn.addEventListener('click', () => fetchPage(currentPage + 1, true));
+  btnSearch.onclick = doSearchFromInput;
+  qInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); doSearchFromInput(); } });
+  sortSel.onchange = () => { currentPage = 1; doSearchFromInput(); };
+  qInput.addEventListener('input', showSuggest);
+  document.addEventListener('click', (e)=>{ if(!suggestBox.contains(e.target) && e.target!==qInput){ suggestBox.style.display='none'; } });
+  suggestBox.addEventListener('click', (e)=>{ const item = e.target.closest('.sug-item'); if(!item) return; qInput.value = item.getAttribute('data-title') || qInput.value; suggestBox.style.display='none'; doSearchFromInput(); });
+  grid.addEventListener('click', (e) => {
+      if (e.target.classList.contains('history-btn')) {
+          const title = e.target.dataset.title;
+          openHistoryModal(title);
+      }
+  });
+  marketGrid.addEventListener('click', (e) => {
+      e.preventDefault();
+      const tag = e.target.closest('.market-tag');
+      if (tag && tag.dataset.category) {
+          qInput.value = tag.dataset.category;
+          doSearchFromInput();
+          window.scrollTo({ top: qInput.offsetTop - 20, behavior: 'smooth' });
+      }
+  });
+  modalClose.addEventListener('click', closeHistoryModal);
+  historyModal.addEventListener('click', (e) => {
+      if (e.target === historyModal) {
+          closeHistoryModal();
+      }
+  });
+  timeframeBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+          timeframeBtns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const range = parseInt(btn.dataset.range, 10);
+          drawChart(currentHistoryData, range);
+      });
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    fetchPage(1, false);
+    fetchMarketStatus();
+  });
+</script>
+</body>
+</html>

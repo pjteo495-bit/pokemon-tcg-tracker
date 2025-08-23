@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>POKEGR TCG TRACKER</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  :root {
+    --poke-blue: #2A75BB;
+    --poke-yellow: #FFCC00;
+    --poke-red: #EE1515;
+    --poke-green: #4DAD5B;
+    --bg: #0b1220;
+    --panel: #121a2b;
+    --card: #16223a;
+    --text: #eaf1ff;
+    --muted: #a7b6d6;
+    --border: #23314c;
+    --chip: #1c2b48;
+    --shadow: 0 8px 26px rgba(0,0,0,.30);
+  }
+  body { 
+    margin:0; 
+    background:
+      radial-gradient(circle at 10% 20%, rgba(42, 117, 187, 0.15), transparent 40%),
+      radial-gradient(circle at 90% 80%, rgba(77, 173, 91, 0.1), transparent 50%),
+      var(--bg);
+    color:var(--text); font-family:'Poppins', sans-serif; min-height:100vh; 
+  }
+  .wrap { max-width:1200px; margin:0 auto; padding:22px 16px 42px; }
+  
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2rem;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+  .poke-ball {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, #fff 0 22%, #000 23% 29%, #fff 30% 55%, transparent 56%), linear-gradient(#fff 50%, #000 50% 54%, var(--poke-red) 54%);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.35);
+  }
+  .logo h1 { margin: 0; font-size: 28px; font-weight: 800; color: var(--text); }
+  .nav-buttons { display: flex; gap: 15px; }
+  .nav-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 20px; background: var(--poke-blue); color: white;
+    border-radius: 12px; text-decoration: none; font-weight: 700;
+    transition: all .2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .nav-btn:hover { background: #1b4f8e; transform: translateY(-2px); }
+
+  .main-title-container { text-align: center; margin-bottom: 2rem; }
+  .main-title {
+    font-size: 2.5rem; font-weight: 800;
+    background:linear-gradient(to right, var(--poke-blue), var(--poke-green));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+
+  .tcg-search { position:relative; margin:30px auto; max-width:700px; }
+  .tcg-search input { width:100%; box-sizing: border-box; height:56px; border-radius:14px; padding:0 20px 0 52px; font-size:18px; background:var(--panel); color:var(--text); border:1px solid var(--border); outline:none; box-shadow:0 8px 22px rgba(0,0,0,.25); }
+  .tcg-search input::placeholder { color: var(--muted); }
+  .search-icon { position:absolute; left:20px; top:50%; transform:translateY(-50%); color: var(--muted); font-size:20px; }
+  
+  .suggest { position:absolute; left:0; right:0; top:62px; background:var(--panel); border:1px solid var(--border); border-radius:14px; display:none; max-height:440px; overflow:auto; z-index:100; box-shadow:0 8px 22px rgba(0,0,0,.25); }
+  .sug-item { display:flex; align-items:center; gap:16px; padding:14px; cursor:pointer; border-bottom:1px solid var(--border); transition:background .2s ease; }
+  .sug-item:last-child { border-bottom: none; }
+  .sug-item:hover { background:var(--chip); }
+  .sug-item img { width:56px; height:56px; object-fit:contain; background:#fff; border-radius:10px; border:1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
+  .sug-info { flex:1; min-width: 0; }
+  .sug-name { font-weight:700; color:var(--text); margin-bottom:4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sug-meta { font-size:14px; color:var(--muted); }
+  
+  #tcgResults { display:none; background:var(--panel); border-radius:20px; padding:30px; border:1px solid var(--border); margin-top:30px; box-shadow:0 10px 30px rgba(0,0,0,0.25); }
+  .card-header { display:flex; flex-wrap: wrap; gap:30px; margin-bottom:30px; }
+  .card-image { flex:0 0 300px; background:white; border-radius:16px; border:1px solid var(--border); overflow:hidden; align-self: flex-start; }
+  .card-image img { width:100%; height:auto; object-fit:contain; display:block; }
+  .card-details { flex:1; min-width: 300px; }
+  .card-title { font-size:28px; font-weight:800; margin:0 0 10px; color:var(--text); }
+  .card-set { display:flex; align-items:center; gap:10px; font-size:18px; color:var(--muted); margin-bottom:15px; flex-wrap: wrap; }
+  .set-icon { width:24px; height:24px; }
+  .card-meta { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:15px; margin-bottom:25px; }
+  .meta-item { background:var(--card); padding:15px; border-radius:12px; border:1px solid var(--border); }
+  .meta-label { font-size:14px; color:var(--muted); margin-bottom:5px; }
+  .meta-value { font-size:18px; font-weight:700; color:var(--text); }
+  .price-tag { color:var(--poke-yellow); font-weight:800; }
+  
+  .external-links { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+  .external-link-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 15px; background: var(--card); color: var(--text);
+    border: 1px solid var(--border); border-radius: 12px;
+    text-decoration: none; font-weight: 700;
+    transition: all .2s ease;
+  }
+  .external-link-btn:hover { background: var(--panel); transform: translateY(-2px); }
+  
+  .psa-section { background:var(--card); border-radius:16px; padding:16px; border:1px solid var(--border); margin-top:4px; }
+  .psa-title { font-size:18px; font-weight:800; margin:0 0 10px; }
+  .psa-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(70px, 1fr)); gap:8px; }
+  .psa-cell { background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:8px; text-align:center; }
+  .psa-grade { font-size:12px; color:var(--muted); }
+  .psa-price { font-size:14px; font-weight:800; color:var(--poke-yellow); }
+  
+  .loading { text-align:center; padding:40px; font-size:18px; color:var(--muted); }
+  .loading-spinner { border:4px solid rgba(255,255,255,0.1); border-left-color:var(--poke-yellow); border-radius:50%; width:40px; height:40px; animation:spin 1s linear infinite; margin:0 auto 20px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .attacks-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:20px; margin-top:30px; }
+  .attack-card { background:var(--card); border-radius:14px; padding:20px; border:1px solid var(--border); }
+  .attack-name { font-weight:700; color:var(--text); margin-bottom:10px; font-size:18px; }
+  .attack-cost { display:flex; gap:8px; margin-bottom:15px; }
+  .energy-symbol { width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:12px; color:white; border: 1px solid rgba(0,0,0,0.2); }
+  .type-colorless { background:#A8A878; } .type-fire { background:#F08030; } .type-water { background:#6890F0; } .type-lightning { background:#F8D030; } .type-psychic { background:#F85888; } .type-fighting { background:#C03028; } .type-darkness { background:#705848; } .type-metal { background:#B8B8D0; } .type-dragon { background:#7038F8; } .type-fairy { background:#EE99AC; } .type-grass { background:#78C850; }
+  .attack-damage { font-size:16px; margin-bottom:10px; }
+  .attack-text { font-size:15px; line-height:1.5; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="header">
+      <a href="/" class="logo">
+          <div class="poke-ball"></div>
+          <h1>POKEGR</h1>
+      </a>
+      <div class="nav-buttons">
+          <a href="/top100" class="nav-btn">
+              <i class="fas fa-fire"></i>
+              <span>Top 100</span>
+          </a>
+      </div>
+  </header>
+
+  <div class="main-title-container">
+      <h2 class="main-title">POKEGR TCG TRACKER</h2>
+  </div>
+
+  <div class="tcg-search">
+    <i class="fas fa-search search-icon"></i>
+    <input id="tcgSearch" type="text" placeholder="Search Pokémon cards by name or number..." autocomplete="off">
+    <div id="tcgSuggest" class="suggest"></div>
+  </div>
+
+  <div id="tcgResults">
+    <!-- Card details will be rendered here -->
+  </div>
+</div>
+
+<script>
+  const tcgSearch = document.getElementById('tcgSearch');
+  const tcgSuggest = document.getElementById('tcgSuggest');
+  const tcgResults = document.getElementById('tcgResults');
+  let suggestController = null;
+  const cardDetailCache = new Map();
+
+  function debounce(func, delay = 300) {
+    let timeout;
+    return (...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        func.apply(this, args);
+      }, delay);
+    };
+  }
+
+  async function fetchSuggestions(query) {
+    if (suggestController) {
+      suggestController.abort();
+    }
+    suggestController = new AbortController();
+    try {
+      const response = await fetch(`/api/tcg/suggest?q=${encodeURIComponent(query)}`, { signal: suggestController.signal });
+      if (!response.ok) return [];
+      return (await response.json()).items || [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function renderSuggestions(items) {
+    if (!items.length) {
+      tcgSuggest.style.display = 'none';
+      return;
+    }
+    tcgSuggest.innerHTML = items.map(item => `
+        <div class="sug-item" data-id="${item.id}" data-name="${(item.name || '').replace(/"/g, '&quot;')}">
+          <img src="${item.smallImage || ''}" alt="${item.name}" loading="lazy" onerror="this.style.display='none'">
+          <div class="sug-info">
+            <div class="sug-name">${item.name}</div>
+            <div class="sug-meta">
+              <span>${item.set || 'Unknown Set'} • #${item.number || '?'}</span>
+            </div>
+          </div>
+        </div>`).join('');
+    tcgSuggest.style.display = 'block';
+  }
+
+  function renderCardDetails(card) {
+      const currency = (card.prices && card.prices.currency) || "EUR";
+      const symbolMap = { USD: "$", EUR: "€", GBP: "£" };
+      const priceSymbol = symbolMap[currency] || "";
+      const marketPrice = card.prices?.market != null ? `${priceSymbol}${Number(card.prices.market).toFixed(2)}` : "N/A";
+      const hp = card.hp ? `HP ${card.hp}` : 'N/A';
+      const types = (card.types || []).join(', ');
+      const psa9Price = card.prices?.psa9 != null ? `${priceSymbol}${Number(card.prices.psa9).toFixed(2)}` : "N/A";
+      const psa10Price = card.prices?.psa10 != null ? `${priceSymbol}${Number(card.prices.psa10).toFixed(2)}` : "N/A";
+      const psaRows = Array.from({ length: 10 }, (_, i) => i + 1).map(grade => {
+          const price = card.prices?.psa?.[grade] ? `${priceSymbol}${Number(card.prices.psa[grade]).toFixed(2)}` : '—';
+          return `<div class="psa-cell"><div class="psa-grade">PSA ${grade}</div><div class="psa-price">${price}</div></div>`;
+      }).join('');
+      const allAttacks = (card.abilities || []).concat(card.attacks || []);
+      const attacksHtml = allAttacks.map(item => {
+          const isAbility = 'cost' in item === false;
+          const costHTML = !isAbility ? (item.cost || []).map(energy => 
+            `<div class="energy-symbol type-${energy.toLowerCase()}">${energy === 'Colorless' ? 'C' : energy[0]}</div>`
+          ).join('') : '';
+          return `
+            <div class="attack-card">
+              <div class="attack-name">${item.name} ${isAbility ? '(Ability)' : ''}</div>
+              ${!isAbility ? `<div class="attack-cost">${costHTML}</div>` : ''}
+              ${!isAbility && item.damage ? `<div class="attack-damage">Damage: ${item.damage}</div>` : ''}
+              <div class="attack-text">${item.text}</div>
+            </div>`;
+      }).join('');
+      const externalLinksHtml = `
+      ${card.tcgPlayerUrl ? `<a href="${card.tcgPlayerUrl}" target="_blank" class="external-link-btn"><i class="fas fa-external-link-alt"></i> TCGplayer</a>` : ''}
+      ${card.cardmarketUrl ? `<a href="${card.cardmarketUrl}" target="_blank" class="external-link-btn"><i class="fas fa-external-link-alt"></i> Cardmarket</a>` : ''}
+      ${card.ebayUrl ? `<a href="${card.ebayUrl}" target="_blank" class="external-link-btn"><i class="fas fa-external-link-alt"></i> eBay</a>` : ''}
+      `;
+      return `
+        <div id="cardContent">
+          <div class="card-header">
+            <div class="card-image">
+              <img id="tcgCardImage" src="${card.imageUrl || ''}" alt="Card Image" loading="lazy">
+            </div>
+            <div class="card-details">
+              <h2 class="card-title">${card.name || 'Unknown Card'}</h2>
+              <div class="card-set">
+                <img src="${card.setIcon || ''}" alt="Set Icon" class="set-icon">
+                <span>${card.set}</span><span>•</span><span>#${card.number}</span><span>•</span><span>${card.rarity}</span>
+              </div>
+              <div class="card-meta">
+                <div class="meta-item"><div class="meta-label">Market Price</div><div class="meta-value price-tag">${marketPrice}</div></div>
+                <div class="meta-item"><div class="meta-label">PSA 9 Price</div><div class="meta-value price-tag">${psa9Price}</div></div>
+                <div class="meta-item"><div class="meta-label">PSA 10 Price</div><div class="meta-value price-tag">${psa10Price}</div></div>
+                <div class="meta-item"><div class="meta-label">HP</div><div class="meta-value">${hp}</div></div>
+                <div class="meta-item"><div class="meta-label">Type</div><div class="meta-value">${types}</div></div>
+                <div class="meta-item"><div class="meta-label">Artist</div><div class="meta-value">${card.artist || 'N/A'}</div></div>
+              </div>
+              ${card.flavorText ? `<div class="meta-item"><div class="meta-label">Flavor Text</div><div class="meta-value">${card.flavorText}</div></div>` : ''}
+              ${card.pullRate ? `<div class="meta-item"><div class="meta-label">Pull Rate</div><div class="meta-value">${card.pullRate}</div></div>` : ''}
+              ${card.funFact ? `
+                <div class="meta-item" style="grid-column: 1 / -1;">
+                  <div class="meta-label">Greek Fun Fact</div>
+                  <div class="meta-value">${card.funFact}</div>
+                </div>
+              ` : ''}
+              ${Object.keys(card.prices?.psa || {}).length > 0 ? `<div class="psa-section"><div class="psa-title">PSA Prices</div><div class="psa-grid">${psaRows}</div></div>` : ''}
+              <div class="external-links">
+                ${externalLinksHtml}
+              </div>
+            </div>
+          </div>
+          ${attacksHtml ? `<div id="attacksSection"><h3 style="font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 20px;">Attacks & Abilities</h3><div class="attacks-grid">${attacksHtml}</div></div>` : ''}
+          <div id="relatedSection" style="display: none; margin-top: 30px;"><h3 style="font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 20px;">You might also like:</h3><div id="relatedGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;"></div></div>
+        </div>`;
+  }
+  
+  function renderRelatedCards(cards) {
+    const grid = document.getElementById('relatedGrid');
+    const container = document.getElementById('relatedSection');
+    if (!cards || !cards.length || !grid || !container) {
+      if(container) container.style.display = 'none';
+      return;
+    }
+    grid.innerHTML = cards.map(card => `
+      <div class="related-card" data-id="${card.id}" style="cursor: pointer; text-align: center;">
+        <img src="${card.smallImage}" alt="${card.name}" style="width: 100%; border-radius: 8px; background: white;">
+        <p style="font-weight: 600; font-size: 14px; margin: 8px 0 0;">${card.name}</p>
+      </div>`
+    ).join('');
+    container.style.display = 'block';
+  }
+
+  async function handleLoadCard(cardId, cardName = '') {
+    tcgResults.style.display = 'block';
+    tcgResults.innerHTML = '<div class="loading" id="loadingCard"><div class="loading-spinner"></div> Loading card details...</div>';
+    let card = cardDetailCache.get(cardId);
+    if (!card) {
+      try {
+        const response = await fetch(`/api/tcg/card?id=${cardId}`);
+        if (!response.ok) throw new Error('Card not found');
+        card = await response.json();
+        cardDetailCache.set(cardId, card);
+      } catch (error) {
+        tcgResults.innerHTML = `<div class="error" style="padding: 20px; text-align: center; color: var(--poke-red);">Error loading '${cardName || 'card'}'. Please try another search.</div>`;
+        return;
+      }
+    }
+    tcgResults.innerHTML = renderCardDetails(card);
+    window.scrollTo({ top: tcgSearch.offsetTop, behavior: 'smooth' });
+    if (card.setId && card.rarity) {
+      const resp = await fetch(`/api/tcg/related?setId=${card.setId}&rarity=${encodeURIComponent(card.rarity)}&cardId=${card.id}`);
+      if (resp.ok) {
+        const related = (await resp.json()).items || [];
+        renderRelatedCards(related);
+      }
+    }
+  }
+  
+  const handleSearchInput = debounce(async (event) => {
+    const query = event.target.value.trim();
+    if (query.length < 1) {
+      tcgSuggest.style.display = 'none';
+      return;
+    }
+    tcgSuggest.innerHTML = '<div class="loading" style="padding: 15px; text-align:center;">Searching...</div>';
+    tcgSuggest.style.display = 'block';
+    const items = await fetchSuggestions(query);
+    renderSuggestions(items);
+  }, 250);
+  
+  tcgSearch.addEventListener('input', handleSearchInput);
+  tcgSuggest.addEventListener('click', (e) => {
+    const item = e.target.closest('.sug-item');
+    if (item && item.dataset.id) {
+      tcgSuggest.style.display = 'none';
+      tcgSearch.value = '';
+      handleLoadCard(item.dataset.id, item.dataset.name);
+    }
+  });
+  tcgResults.addEventListener('click', (e) => {
+    const cardElement = e.target.closest('.related-card');
+    if (cardElement && cardElement.dataset.id) {
+        handleLoadCard(cardElement.dataset.id);
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (!tcgSearch.contains(e.target)) {
+      tcgSuggest.style.display = 'none';
+    }
+  });
+  window.addEventListener('DOMContentLoaded', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const cardId = urlParams.get('cardId');
+    if (cardId) {
+        handleLoadCard(cardId);
+    }
+  });
+</script>
+</body>
+</html>
