@@ -119,6 +119,47 @@
   .attack-damage { font-size:16px; margin-bottom:10px; }
   .attack-text { font-size:15px; line-height:1.5; color:var(--muted); }
 </style>
+<!-- Mobile-friendly adjustments -->
+<style>
+  @media (max-width: 768px) {
+    .wrap {
+      padding: 15px;
+    }
+    .header {
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .logo h1 {
+      font-size: 22px; /* Smaller logo text */
+    }
+    .main-title {
+      font-size: 1.8rem; /* Smaller main title */
+    }
+    .card-header {
+      flex-direction: column; /* Stack image and details vertically */
+      gap: 20px;
+    }
+    .card-image {
+      flex-basis: auto; /* Allow image to resize freely */
+      max-width: 100%;
+    }
+    .card-details {
+      min-width: 0;
+    }
+    .card-title {
+      font-size: 24px;
+    }
+    .nav-btn span {
+        display: none; /* Hide text on nav buttons, keep icon */
+    }
+    .nav-btn {
+        padding: 10px 12px;
+    }
+    #tcgResults {
+        padding: 15px;
+    }
+  }
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -131,6 +172,10 @@
           <a href="/top100" class="nav-btn">
               <i class="fas fa-fire"></i>
               <span>Top 100</span>
+          </a>
+          <a href="/" class="nav-btn">
+              <i class="fas fa-store"></i>
+              <span>Marketplace</span>
           </a>
       </div>
   </header>
