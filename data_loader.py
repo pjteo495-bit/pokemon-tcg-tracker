@@ -37,11 +37,13 @@ def _normalize_set(text: str) -> str:
     Make set names comparable across CSV and local data.
     """
     s = _tokenize(text)
-    # --- FIX START: Handle specific edge cases first ---
+    # --- FIX START: Handle specific edge cases and RETURN immediately ---
     if 'pokemon go' in s:
         return 'go'
     if 'wizards black star promos' in s:
         return 'wizards black star promos'
+    if 'black star' in s and 'promo' in s:
+        return 'black star promo'
     # --- FIX END ---
     
     s = re.sub(r'\b(1st|first|edition|shadowless)\b', '', s)
