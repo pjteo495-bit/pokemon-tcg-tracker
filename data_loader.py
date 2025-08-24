@@ -33,18 +33,38 @@ def _tokenize(s: str) -> str:
 
 def _normalize_set(text: str) -> str:
     """
-    Aggressively normalize set names to their most basic form for robust matching.
+    Revised normalization for set names to be more robust.
     """
     s = _tokenize(text)
-    # Remove all common, non-unique words
-    common_words = r'\b(pokemon|tcg|the|trading|card|game|series|wizards|wotc|set|edition|promos|promo|black|star)\b'
+    
+    # Handle specific, known sets first to avoid over-stripping
+    if 'pokemon go' in s:
+        return 'go'
+    if 'wizards black star promos' in s:
+        return 'wizards black star promo'
+    if 'black star' in s and 'promo' in s:
+        return 'black star promo'
+        
+    # General cleanup for regular sets
+    common_words = r'\b(pokemon|tcg|the|trading|card|game|series|set|edition)\b'
     s = re.sub(common_words, '', s)
-    # Collapse all remaining whitespace
-    s = re.sub(r'\s+', '', s).strip()
-    # Special case for "GO" which might become empty
-    if text.lower().find("go") != -1 and len(s) < 3:
-        return "go"
-    return s
+    
+    # Remove series names, but only if it's not the whole name
+    series_patterns = [
+        r'diamond\s*(?:&|and)?\s*pearl', r'black\s*(?:&|and)?\s*white',
+        r'sun\s*(?:&|and)?\s*moon', r'sword\s*(?:&|and)?\s*shield',
+        r'scarlet\s*(?:&|and)?\s*violet', r'heartgold\s*(?:&|and)?\s*soulsilver',
+    ]
+    
+    temp_s = s
+    for pat in series_patterns:
+        temp_s = re.sub(r'\b' + pat + r'\b', '', temp_s).strip()
+    
+    # If removing the series name left something, use that. Otherwise, keep the original.
+    if temp_s:
+        s = temp_s
+
+    return re.sub(r'\s+', ' ', s).strip()
 
 def _normalize_number(num) -> str:
     s = str(num or '').strip().lower()
@@ -155,13 +175,8 @@ def get_local_related_cards(set_id, rarity, current_card_id, count=5):
 
 def get_price_override(name, set_name, number):
     global _price_map
-    name_norm, set_norm, num_norm = _key(name, set_name, number)
-    
-    # --- DIAGNOSTIC PRINT (LOOKUP) ---
-    if "dragonite" in name_norm or "go" in set_norm:
-        print(f"DIAGNOSTIC (LOOKUP): Looking up price key: {(name_norm, set_norm, num_norm)}")
-    
-    return _price_map.get((name_norm, set_norm, num_norm))
+    price_key = _key(name, set_name, number)
+    return _price_map.get(price_key)
 
 def _find_latest_price_file():
     if not os.path.isdir(PRICES_DIR): return None
@@ -219,7 +234,7 @@ def _load_price_data():
 
         if not all([card_name, set_name, number_raw]): continue
 
-        name_norm, set_norm, num_norm = _key(card_name, set_name, number_raw)
+        price_key = _key(card_name, set_name, number_raw)
         
         price_obj = {
             "market": _parse_price(row.get(raw_k)),
@@ -227,12 +242,6 @@ def _load_price_data():
             "psa10": _parse_price(row.get(psa10_k)),
             "currency": "EUR", "source": "excel"
         }
-        
-        price_key = (name_norm, set_norm, num_norm)
-        
-        # --- DIAGNOSTIC PRINT (STORE) ---
-        if "dragonite" in name_norm or "go" in set_norm:
-            print(f"DIAGNOSTIC (STORE): Storing price key: {price_key}")
         
         _price_map[price_key] = price_obj
 
