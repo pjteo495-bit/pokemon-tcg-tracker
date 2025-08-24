@@ -3,6 +3,10 @@ import os
 import re
 from unicodedata import normalize
 
+# New: decoding helpers
+import html as _html
+import urllib.parse as _urlparse
+
 try:
     import pandas as pd  # type: ignore
 except Exception:
@@ -23,7 +27,26 @@ _price_index_by_setnum = {}     # (set_norm, num_norm) -> [(name_norm, prices)]
 # ---------- Normalization ----------
 _alnum = re.compile(r'[^a-z0-9]+')
 
+# Variant/printing descriptors that should NOT be part of the name key
+_VARIANT_WORDS = {
+    'reverse', 'rev', 'reverse holo', 'rev holo', 'reverse-holo',
+    'holo', 'holofoil', 'foil', 'rainbow foil', 'galaxy', 'cosmos',
+    'non-holo', 'non holo', 'unlimited', 'first edition', '1st edition', '1st',
+    'shadowless', 'staff', 'prerelease', 'pre-release', 'promo',
+    'jumbo', 'oversize', 'shattered glass', 'cracked ice', 'e-reader', 'mini'
+}
+
+def _unescape_decode(s: str) -> str:
+    """Decode HTML entities and percent-encoding early (e.g., %27, &amp;)."""
+    try:
+        s = _html.unescape(str(s))
+        s = _urlparse.unquote(s)
+        return s
+    except Exception:
+        return str(s)
+
 def _ascii_lower(s: str) -> str:
+    s = _unescape_decode(s)
     return normalize('NFKD', str(s)).encode('ASCII', 'ignore').decode('utf-8').lower().strip()
 
 def _tokenize(s: str) -> str:
@@ -32,11 +55,34 @@ def _tokenize(s: str) -> str:
     s = re.sub(r'\s+', ' ', s).strip()
     return s
 
+def _strip_variant_tags(text: str) -> str:
+    """Remove bracketed/suffixed variant descriptors from the card title when safe."""
+    if not text:
+        return text
+    s = str(text)
+
+    # Remove bracket blocks like [Reverse Holo], [1st Edition] if they only contain variant words
+    def _repl(m):
+        inside = m.group(1)
+        low = inside.lower()
+        if any(w in low for w in _VARIANT_WORDS):
+            return ''
+        return m.group(0)
+
+    s = re.sub(r'\[(.*?)\]', _repl)
+
+    # Also drop common variant words that appear as loose suffix/prefix (e.g., " - Reverse Holo")
+    for w in list(_VARIANT_WORDS):
+        s = re.sub(r'(?:^|\s|[-–—])' + re.escape(w) + r'(?:$|\b)', ' ', s, flags=re.IGNORECASE)
+
+    s = re.sub(r'\s+', ' ', s).strip()
+    return s
+
 def _normalize_set(text: str) -> str:
     """
     Make set names comparable across CSV and local data.
     """
-    s = _tokenize(text)
+    s = _tokenize(_unescape_decode(text))
     s = re.sub(r'\b(1st|first|edition|shadowless)\b', '', s)
     s = re.sub(r'\b(pokemon|tcg|the|trading|card|game|series)\b', '', s)
     series_patterns = [
@@ -65,8 +111,13 @@ def _digits_only(num_norm: str) -> str:
     return re.sub(r'[^0-9]', '', num_norm or '')
 
 def _name_norm(name: str) -> str:
-    """Tokenize the name without stripping bracketed content."""
+    """Tokenize the name with variant descriptors stripped out."""
+    name = _strip_variant_tags(name or '')
     return _tokenize(name)
+
+def _name_norm_raw(name: str) -> str:
+    """Tokenize the raw name (without variant stripping)."""
+    return _tokenize(name or '')
 
 def _key(name, set_name, number):
     return (_name_norm(name), _normalize_set(set_name), _normalize_number(number))
@@ -148,15 +199,14 @@ def search_local_cards(query, limit=12):
         # Combine card's name and set for text matching
         card_all_text_tokens = card_name_tokens.union(card_set_tokens)
 
-        # --- MODIFICATION START ---
         # Score based on how many search tokens have a partial match in the card's text
         text_match_count = 0
         if search_tokens:
             for s_token in search_tokens:
                 for c_token in card_all_text_tokens:
-                    if s_token in c_token:  # Check for partial match (e.g., "char" in "charizard")
+                    if s_token in c_token:  # e.g., "char" in "charizard"
                         text_match_count += 1
-                        break # Move to the next search token once a match is found
+                        break
         
         # If there are text tokens to search, but none matched, skip this card
         if search_tokens and text_match_count == 0:
@@ -164,7 +214,6 @@ def search_local_cards(query, limit=12):
 
         # Main score is now based on the number of partial matches
         score += 50 * text_match_count
-        # --- MODIFICATION END ---
 
         # Score name match: bonus for more query tokens found in the name
         name_match_score = len(search_tokens.intersection(card_name_tokens))
@@ -217,8 +266,28 @@ def get_local_related_cards(set_id, rarity, current_card_id, count=5):
 # ---------- Price overrides ----------
 def get_price_override(name, set_name, number):
     global _price_map
-    name_norm, set_norm, num_norm = _key(name, set_name, number)
-    return _price_map.get((name_norm, set_norm, num_norm))
+    # Primary key
+    name_norm = _name_norm(name)
+    set_norm  = _normalize_set(set_name)
+    num_norm  = _normalize_number(number)
+
+    val = _price_map.get((name_norm, set_norm, num_norm))
+    if val:
+        return val
+
+    # Fallback 1: try raw-name normalization (without variant stripping)
+    val = _price_map.get((_name_norm_raw(name), set_norm, num_norm))
+    if val:
+        return val
+
+    # Fallback 2: digits-only number (handles e.g., 83 vs BW83)
+    num_digits = _digits_only(num_norm)
+    if num_digits:
+        val = _price_map.get((name_norm, set_norm, num_digits)) or _price_map.get((_name_norm_raw(name), set_norm, num_digits))
+        if val:
+            return val
+
+    return None
 
 def refresh_price_data():
     _load_price_data()
@@ -263,6 +332,23 @@ def _detect_currency_from_rows(rows):
     if "£" in joined or " gbp" in joined or "pound" in joined:
         return "GBP"
     return "EUR"
+
+def _row_is_variant(original_name: str) -> bool:
+    low = (original_name or '').lower()
+    if '[' in low and ']' in low:
+        return True
+    return any(w in low for w in _VARIANT_WORDS)
+
+def _insert_price_key(price_map, key, price_obj, score):
+    """
+    Insert/replace a price entry for a key using a score:
+      - Prefer non-variant rows
+      - Prefer rows with more price fields filled
+    """
+    if key not in price_map or score > price_map[key].get('_score', -1):
+        new_obj = dict(price_obj)
+        new_obj['_score'] = score
+        price_map[key] = new_obj
 
 def _load_price_data():
     global _price_map
@@ -322,25 +408,32 @@ def _load_price_data():
         set_name   = (row.get(set_k) or "").strip() if set_k else ""
         number_raw = str(row.get(num_k) or "").strip() if num_k else ""
 
+        # Decode HTML/percent-encodings early (e.g., Champion%27S Path)
+        card_name = _unescape_decode(card_name)
+        set_name  = _unescape_decode(set_name)
+
         if set_name.lower().startswith("pokemon "):
             set_name = set_name.split(" ", 1)[1].strip()
 
+        # If number is missing, pull it from "#..." at the end of the title
         if not number_raw and "#" in card_name:
             parts = card_name.rsplit("#", 1)
             if len(parts) == 2:
                 card_name = parts[0].strip()
                 number_raw = parts[1].strip()
 
-        raw_price  = _parse_price(row.get(raw_k))  if raw_k  else None
-        psa9_price = _parse_price(row.get(psa9_k)) if psa9_k else None
-        psa10_price= _parse_price(row.get(psa10_k))if psa10_k else None
+        raw_price   = _parse_price(row.get(raw_k))  if raw_k  else None
+        psa9_price  = _parse_price(row.get(psa9_k)) if psa9_k else None
+        psa10_price = _parse_price(row.get(psa10_k))if psa10_k else None
 
         if not card_name or not set_name or not number_raw:
             continue
 
-        name_norm = _name_norm(card_name)
-        set_norm  = _normalize_set(set_name)
-        num_norm  = _normalize_number(number_raw)
+        # Two name variants for better matching
+        name_norm_base = _name_norm(card_name)     # variant-stripped
+        name_norm_raw  = _name_norm_raw(card_name) # raw-tokenized
+        set_norm       = _normalize_set(set_name)
+        num_norm       = _normalize_number(number_raw)
 
         price_obj = {
             "market": raw_price,
@@ -349,9 +442,15 @@ def _load_price_data():
             "currency": currency or "EUR",
             "source": "excel"
         }
-        
-        price_key = (name_norm, set_norm, num_norm)
-        _price_map[price_key] = price_obj
-        loaded += 1
 
-    print(f"Loaded {loaded} price override rows.")
+        # Prefer non-variant rows and those with more price fields
+        is_variant = _row_is_variant(card_name)
+        richness   = (1 if raw_price is not None else 0) + (2 if psa9_price is not None else 0) + (3 if psa10_price is not None else 0)
+        score      = richness + (2 if not is_variant else 0)
+
+        for nm in {name_norm_base, name_norm_raw}:
+            price_key = (nm, set_norm, num_norm)
+            _insert_price_key(_price_map, price_key, price_obj, score)
+            loaded += 1
+
+    print(f"Loaded {loaded} price override rows (with fallback keys).")
