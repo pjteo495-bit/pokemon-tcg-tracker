@@ -53,7 +53,7 @@
     box-shadow: 0 3px 10px rgba(0,0,0,0.35);
   }
   .logo h1 { margin: 0; font-size: 28px; font-weight: 800; color: var(--text); }
-  .nav-buttons { display: flex; gap: 15px; }
+  .nav-buttons { display: flex; gap: 15px; align-items: center;}
   .nav-btn {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 10px 20px; background: var(--poke-blue); color: white;
@@ -61,6 +61,28 @@
     transition: all .2s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
   }
   .nav-btn:hover { background: #1b4f8e; transform: translateY(-2px); }
+  .dropdown {
+    position: relative;
+    display: inline-block;
+  }
+  .dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: var(--panel);
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+  }
+  .dropdown-content a {
+    color: var(--text);
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+  }
+  .dropdown-content a:hover {background-color: var(--card);}
+  .dropdown:hover .dropdown-content {display: block;}
 
   .main-title-container { text-align: center; margin-bottom: 2rem; }
   .main-title {
@@ -184,6 +206,13 @@
               <i class="fas fa-store"></i>
               <span>Marketplace</span>
           </a>
+          <div class="dropdown">
+            <a href="/wallpapers" class="nav-btn"><i class="fas fa-image"></i> <span>Wallpapers</span></a>
+            <div class="dropdown-content">
+                <a href="/wallpapers#pc-wallpapers">PC Wallpapers</a>
+                <a href="/wallpapers#mobile-wallpapers">Mobile Wallpapers</a>
+            </div>
+        </div>
       </div>
   </header>
 
