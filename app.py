@@ -9,6 +9,7 @@ import csv
 import glob
 import pandas as pd
 from datetime import datetime, timedelta
+import pytz
 
 app = Flask(__name__, template_folder="templates")
 
@@ -43,7 +44,9 @@ except Exception as e:
 # --- App Routes ---
 @app.route("/")
 def index():
-    current_date = datetime.now().strftime("%d %B %Y")
+    # Set the timezone to Europe/Athens
+    tz = pytz.timezone('Europe/Athens')
+    current_date = datetime.now(tz).strftime("%d %B %Y")
     return render_template("index.html", base_url=request.url_root, current_date=current_date)
 
 @app.route("/tcg-tracker")
@@ -133,7 +136,6 @@ def api_price_history():
     if not item_title:
         return jsonify({"error": "Missing item title"}), 400
     
-    # Normalize the requested title for matching
     normalized_search_title = normalize_title_for_history(item_title)
 
     history_dir = "Greek_Prices_History"
@@ -160,10 +162,8 @@ def api_price_history():
             if not title_col or not price_col:
                 continue
 
-            # --- THE FIX: Create a new column with normalized titles ---
             df['normalized_title'] = df[title_col].apply(normalize_title_for_history)
 
-            # Match against the new normalized column
             item_row = df[df['normalized_title'] == normalized_search_title]
             
             if not item_row.empty:
@@ -177,7 +177,6 @@ def api_price_history():
     price_history.sort(key=lambda x: x['date'])
     return jsonify(price_history)
 
-# --- Other API routes (no changes) ---
 @app.route("/api/home")
 def api_home():
     sort = request.args.get("sort", "bestsellers"); page = max(1, int(request.args.get("page", 1))); page_size = 24
