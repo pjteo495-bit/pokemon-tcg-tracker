@@ -27,12 +27,19 @@
   *{box-sizing:border-box}
   body{
     margin:0;
-    background:
-      radial-gradient(circle at 10% 20%, rgba(42, 117, 187, 0.15), transparent 40%),
-      radial-gradient(circle at 90% 80%, rgba(238, 21, 21, 0.1), transparent 50%),
-      var(--bg);
-    color:var(--text); font-family:'Poppins', system-ui, sans-serif;
-    min-height:100vh; overflow-x: hidden;
+    /* --- CHANGE: Added background image with overlay --- */
+    background-color: var(--bg);
+    background-image: 
+        linear-gradient(rgba(11, 18, 32, 0.85), rgba(11, 18, 32, 0.85)), 
+        url('https://cdn.midjourney.com/641f11e9-4def-4368-ab6a-602feac7b624/0_0.png');
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed; /* Keeps the background stationary on scroll */
+    color:var(--text); 
+    font-family:'Poppins', system-ui, sans-serif;
+    min-height:100vh; 
+    overflow-x: hidden;
   }
   .wrap{max-width:1200px;margin:0 auto;padding:22px 16px 42px}
   
@@ -527,4 +534,4 @@
   });
 </script>
 </body>
-</html>
+</ht
