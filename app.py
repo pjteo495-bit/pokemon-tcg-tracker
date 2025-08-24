@@ -1,5 +1,6 @@
-# Force-refresh deployment 2025-08-24-v4-BOM-FIX
+# Force-refresh deployment 2025-08-24-v5-NORMALIZATION
 import sys
+import re
 from flask import Flask, render_template, request, jsonify
 from time import time
 import threading
@@ -11,7 +12,7 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__, template_folder="templates")
 
-# --- Helper function to parse dates from filenames ---
+# --- Helper Functions ---
 def parse_date_from_filename(name):
     formats_to_try = ["%d %m %Y", "%Y-%m-%d", "%d-%m-%Y", "%m-%d-%Y"]
     for fmt in formats_to_try:
@@ -20,6 +21,16 @@ def parse_date_from_filename(name):
         except ValueError:
             continue
     return None
+
+def normalize_title_for_history(title):
+    """Aggressively cleans a title for robust matching."""
+    if not isinstance(title, str):
+        return ""
+    # Convert to lowercase
+    s = title.lower()
+    # Remove all non-alphanumeric characters (keeps letters and numbers)
+    s = re.sub(r'[^a-z0-9]', '', s)
+    return s
 
 # --- Load local datasets ---
 try:
@@ -81,10 +92,7 @@ def api_market_status():
             file_datetime = parse_date_from_filename(os.path.splitext(os.path.basename(file_path))[0])
             if not file_datetime or file_datetime < cutoff_date: continue
             
-            if file_path.endswith('.csv'):
-                df = pd.read_csv(file_path, encoding='utf-8-sig')
-            else:
-                df = pd.read_excel(file_path)
+            df = pd.read_csv(file_path, encoding='utf-8-sig') if file_path.endswith('.csv') else pd.read_excel(file_path)
 
             df.columns = [str(c).lower().strip() for c in df.columns]; df['date'] = file_datetime
             all_data.append(df)
@@ -120,6 +128,10 @@ def api_price_history():
     item_title = request.args.get("title", "").strip()
     if not item_title:
         return jsonify({"error": "Missing item title"}), 400
+    
+    # Normalize the requested title for matching
+    normalized_search_title = normalize_title_for_history(item_title)
+
     history_dir = "Greek_Prices_History"
     price_history = []
     if not os.path.isdir(history_dir):
@@ -136,11 +148,7 @@ def api_price_history():
 
             file_date = file_datetime.strftime("%Y-%m-%d")
 
-            # --- THE FIX: Use encoding='utf-8-sig' to handle hidden BOM characters ---
-            if file_path.lower().endswith('.csv'):
-                df = pd.read_csv(file_path, encoding='utf-8-sig')
-            else:
-                df = pd.read_excel(file_path)
+            df = pd.read_csv(file_path, encoding='utf-8-sig') if file_path.lower().endswith('.csv') else pd.read_excel(file_path)
 
             df.columns = [str(c).lower().strip() for c in df.columns]
             title_col = next((c for c in ['item_title', 'title', 'name'] if c in df.columns), None)
@@ -148,7 +156,11 @@ def api_price_history():
             if not title_col or not price_col:
                 continue
 
-            item_row = df[df[title_col].str.strip().str.lower() == item_title.lower()]
+            # --- THE FIX: Create a new column with normalized titles ---
+            df['normalized_title'] = df[title_col].apply(normalize_title_for_history)
+
+            # Match against the new normalized column
+            item_row = df[df['normalized_title'] == normalized_search_title]
             
             if not item_row.empty:
                 price_str = str(item_row.iloc[0][price_col])
