@@ -37,8 +37,17 @@ def _normalize_set(text: str) -> str:
     Make set names comparable across CSV and local data.
     """
     s = _tokenize(text)
+    # --- FIX START: Handle "Pokémon GO" specifically before general cleanup ---
+    if 'pokemon go' in s:
+        return 'go'
+    # --- FIX END ---
+    
     s = re.sub(r'\b(1st|first|edition|shadowless)\b', '', s)
-    s = re.sub(r'\b(pokemon|tcg|the|trading|card|game|series)\b', '', s)
+    # Be less aggressive with removing 'pokemon'
+    if 'pokemon' in s.split() and len(s.split()) > 1:
+        s = re.sub(r'\bpokemon\b', '', s)
+
+    s = re.sub(r'\b(tcg|the|trading|card|game|series)\b', '', s)
     series_patterns = [
         r'diamond\s*(?:&|and)?\s*pearl', r'black\s*(?:&|and)?\s*white',
         r'sun\s*(?:&|and)?\s*moon', r'sword\s*(?:&|and)?\s*shield',
@@ -129,7 +138,6 @@ def search_local_cards(query, limit=12):
     if not query:
         return []
 
-    # 1. Parse query into text tokens and number digits
     search_num_digits = "".join(re.findall(r'\d+', query))
     query_text = _tokenize(re.sub(r'\d+', ' ', query))
     search_tokens = set(t for t in query_text.split() if t)
@@ -137,7 +145,6 @@ def search_local_cards(query, limit=12):
     if not search_tokens and not search_num_digits:
         return []
 
-    # 2. Score every card in the database based on relevance
     results_with_scores = []
     for card in _card_data:
         score = 0.0
@@ -145,45 +152,34 @@ def search_local_cards(query, limit=12):
         card_set_tokens = set(card['_normalized_set'].split())
         card_num_digits = card['_normalized_number_digits']
         
-        # Combine card's name and set for text matching
         card_all_text_tokens = card_name_tokens.union(card_set_tokens)
 
-        # --- MODIFICATION START ---
-        # Score based on how many search tokens have a partial match in the card's text
         text_match_count = 0
         if search_tokens:
             for s_token in search_tokens:
                 for c_token in card_all_text_tokens:
-                    if s_token in c_token:  # Check for partial match (e.g., "char" in "charizard")
+                    if s_token in c_token:
                         text_match_count += 1
-                        break # Move to the next search token once a match is found
+                        break
         
-        # If there are text tokens to search, but none matched, skip this card
         if search_tokens and text_match_count == 0:
             continue
 
-        # Main score is now based on the number of partial matches
         score += 50 * text_match_count
-        # --- MODIFICATION END ---
 
-        # Score name match: bonus for more query tokens found in the name
         name_match_score = len(search_tokens.intersection(card_name_tokens))
         score += 30 * name_match_score
 
-        # Score set match: bonus for more query tokens found in the set
         set_match_score = len(search_tokens.intersection(card_set_tokens))
         score += 20 * set_match_score
         
-        # Huge bonus for exact number match
         if search_num_digits and card_num_digits == search_num_digits:
             score += 50
 
-        # Penalize for cards with many extra words not in the query
         unmatched_tokens = len(card_name_tokens - search_tokens)
         score -= 5 * unmatched_tokens
 
         if score > 0:
-            # Use rarity as a tie-breaker (e.g., holo > non-holo)
             rarity = (card.get('rarity') or '').lower()
             tie_breaker = 0
             if 'rare' in rarity: tie_breaker = 1
@@ -191,7 +187,6 @@ def search_local_cards(query, limit=12):
             if 'ultra' in rarity: tie_breaker = 3
             results_with_scores.append((score, tie_breaker, card))
 
-    # 3. Sort by score and tie-breaker to get the most relevant cards at the top
     results_with_scores.sort(key=lambda x: (x[0], x[1]), reverse=True)
     
     return [card for score, tie_breaker, card in results_with_scores[:limit]]
