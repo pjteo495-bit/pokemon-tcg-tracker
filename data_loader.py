@@ -33,11 +33,11 @@ def _tokenize(s: str) -> str:
 
 def _normalize_set(text: str) -> str:
     """
-    Revised normalization for set names to be more robust.
+    Final robust normalization for set names.
     """
     s = _tokenize(text)
     
-    # Handle specific, known sets first to avoid over-stripping
+    # --- Step 1: Handle specific known sets with unique names first ---
     if 'pokemon go' in s:
         return 'go'
     if 'wizards black star promos' in s:
@@ -45,26 +45,38 @@ def _normalize_set(text: str) -> str:
     if 'black star' in s and 'promo' in s:
         return 'black star promo'
         
-    # General cleanup for regular sets
-    common_words = r'\b(pokemon|tcg|the|trading|card|game|series|set|edition)\b'
-    s = re.sub(common_words, '', s)
-    
-    # Remove series names, but only if it's not the whole name
-    series_patterns = [
-        r'diamond\s*(?:&|and)?\s*pearl', r'black\s*(?:&|and)?\s*white',
-        r'sun\s*(?:&|and)?\s*moon', r'sword\s*(?:&|and)?\s*shield',
-        r'scarlet\s*(?:&|and)?\s*violet', r'heartgold\s*(?:&|and)?\s*soulsilver',
+    # --- Step 2: Remove only truly generic "stop words" ---
+    stop_words = [
+        'pokemon', 'tcg', 'the', 'trading', 'card', 'game', 
+        'series', 'set', 'edition', 'and'
     ]
     
+    # --- Step 3: Handle series names carefully ---
+    series_patterns = [
+        r'diamond\s*pearl', r'black\s*white',
+        r'sun\s*moon', r'sword\s*shield',
+        r'scarlet\s*violet', r'heartgold\s*soulsilver',
+    ]
+
     temp_s = s
     for pat in series_patterns:
+        # Remove the series name from the string
         temp_s = re.sub(r'\b' + pat + r'\b', '', temp_s).strip()
     
-    # If removing the series name left something, use that. Otherwise, keep the original.
-    if temp_s:
+    # If removing the series name left a meaningful part, use the result.
+    # Otherwise (e.g., the name was ONLY the series name), revert to the original.
+    if temp_s and len(temp_s) > 2:
         s = temp_s
 
-    return re.sub(r'\s+', ' ', s).strip()
+    # --- Step 4: Remove stop words from the result ---
+    words = s.split()
+    filtered_words = [word for word in words if word not in stop_words]
+    
+    final_s = ' '.join(filtered_words).strip()
+    
+    # If everything was stripped away (e.g., for "Base Set"), return the original tokenized string
+    return final_s if final_s else s
+
 
 def _normalize_number(num) -> str:
     s = str(num or '').strip().lower()
