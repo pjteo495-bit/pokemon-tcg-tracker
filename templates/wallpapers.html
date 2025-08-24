@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokémon Wallpapers</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --poke-blue: #2A75BB;
+            --poke-yellow: #FFCC00;
+            --poke-red: #EE1515;
+            --poke-green: #4DAD5B;
+            --bg: #0b1220;
+            --panel: #121a2b;
+            --card-bg: #16223a;
+            --text: #eaf1ff;
+            --muted: #a7b6d6;
+            --border: #23314c;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2rem;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+        .poke-ball {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 50% 50%, #fff 0 22%, #000 23% 29%, #fff 30% 55%, transparent 56%), linear-gradient(#fff 50%, #000 50% 54%, var(--poke-red) 54%);
+            box-shadow: 0 3px 10px rgba(0,0,0,0.35);
+        }
+        .logo h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text);
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .nav-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--poke-blue);
+            color: white;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 700;
+            transition: all .2s ease;
+        }
+        .nav-btn:hover {
+            background: #1b4f8e;
+            transform: translateY(-2px);
+        }
+        .wallpaper-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .wallpaper-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(42, 117, 187, 0.2), 0 4px 6px -2px rgba(42, 117, 187, 0.1);
+        }
+        .download-btn {
+            background: var(--poke-green);
+            color: white;
+            transition: all .2s ease;
+        }
+        .download-btn:hover {
+            background: #3c8a48;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container mx-auto px-4 py-8">
+        <header class="header">
+            <a href="/" class="logo">
+                <div class="poke-ball"></div>
+                <h1>POKEGR</h1>
+            </a>
+            <div class="nav-buttons">
+                <a href="/tcg-tracker" class="nav-btn">
+                    <i class="fas fa-search"></i>
+                    <span>TCG Tracker</span>
+                </a>
+                 <a href="/top100" class="nav-btn">
+                    <i class="fas fa-fire"></i>
+                    <span>Top 100</span>
+                </a>
+                 <a href="/" class="nav-btn">
+                    <i class="fas fa-store"></i>
+                    <span>Marketplace</span>
+                </a>
+            </div>
+        </header>
+
+        <div class="text-center mb-10">
+            <h2 class="text-4xl md:text-5xl font-bold text-white">Download Pokémon Wallpapers</h2>
+            <p class="text-lg text-gray-400 mt-2">High-quality wallpapers for your devices.</p>
+        </div>
+
+        <!-- PC Wallpapers Section -->
+        <section id="pc-wallpapers" class="mb-24">
+            <h3 class="text-3xl font-bold text-white mb-6 border-l-4 border-poke-yellow pl-4">PC Wallpapers</h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- PC Wallpaper 1 -->
+                <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg">
+                    <img class="w-full h-48 object-cover" src="https://placehold.co/1920x1080/0b1220/eaf1ff?text=PC+Wallpaper+1" alt="PC Wallpaper 1">
+                    <div class="p-4 text-center">
+                        <a href="https://placehold.co/1920x1080" download="charizard_sunset_pc.png" class="download-btn py-2 px-4 rounded-lg font-semibold inline-block">
+                            <i class="fas fa-download mr-2"></i>Download
+                        </a>
+                    </div>
+                </div>
+                 <!-- PC Wallpaper 2 -->
+                <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg">
+                    <img class="w-full h-48 object-cover" src="https://placehold.co/1920x1080/121a2b/eaf1ff?text=PC+Wallpaper+2" alt="PC Wallpaper 2">
+                    <div class="p-4 text-center">
+                        <a href="https://placehold.co/1920x1080" download="gengar_shadow_pc.png" class="download-btn py-2 px-4 rounded-lg font-semibold inline-block">
+                            <i class="fas fa-download mr-2"></i>Download
+                        </a>
+                    </div>
+                </div>
+                 <!-- PC Wallpaper 3 -->
+                <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg">
+                    <img class="w-full h-48 object-cover" src="https://placehold.co/1920x1080/16223a/eaf1ff?text=PC+Wallpaper+3" alt="PC Wallpaper 3">
+                    <div class="p-4 text-center">
+                        <a href="https://placehold.co/1920x1080" download="pikachu_forest_pc.png" class="download-btn py-2 px-4 rounded-lg font-semibold inline-block">
+                            <i class="fas fa-download mr-2"></i>Download
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mobile Wallpapers Section -->
+        <section id="mobile-wallpapers">
+            <h3 class="text-3xl font-bold text-white mb-6 border-l-4 border-poke-blue pl-4">Mobile Wallpapers</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                <!-- Mobile Wallpaper 1 -->
+                <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg">
+                    <img class="w-full h-64 object-cover" src="https://placehold.co/1080x1920/0b1220/eaf1ff?text=Mobile+1" alt="Mobile Wallpaper 1">
+                    <div class="p-4 text-center">
+                        <a href="https://placehold.co/1080x1920" download="eevee_mobile.png" class="download-btn py-2 px-4 rounded-lg font-semibold w-full block">
+                            <i class="fas fa-download mr-2"></i>Download
+                        </a>
+                    </div>
+                </div>
+                 <!-- Mobile Wallpaper 2 -->
+                <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg">
+                    <img class="w-full h-64 object-cover" src="https://placehold.co/1080x1920/121a2b/eaf1ff?text=Mobile+2" alt="Mobile Wallpaper 2">
+                    <div class="p-4 text-center">
+                        <a href="https://placehold.co/1080x1920" download="snorlax_mobile.png" class="download-btn py-2 px-4 rounded-lg font-semibold w-full block">
+                            <i class="fas fa-download mr-2"></i>Download
+                        </a>
+                    </div>
+                </div>
+                 <!-- Mobile Wallpaper 3 -->
+                <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg">
+                    <img class="w-full h-64 object-cover" src="https://placehold.co/1080x1920/16223a/eaf1ff?text=Mobile+3" alt="Mobile Wallpaper 3">
+                    <div class="p-4 text-center">
+                        <a href="https://placehold.co/1080x1920" download="mewtwo_mobile.png" class="download-btn py-2 px-4 rounded-lg font-semibold w-full block">
+                            <i class="fas fa-download mr-2"></i>Download
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+</body>
+</html>
