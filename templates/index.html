@@ -27,7 +27,6 @@
   *{box-sizing:border-box}
   body{
     margin:0;
-    /* --- CHANGE: Added background image with overlay --- */
     background-color: var(--bg);
     background-image: 
         linear-gradient(rgba(11, 18, 32, 0.85), rgba(11, 18, 32, 0.85)), 
@@ -35,7 +34,7 @@
     background-size: cover;
     background-position: center center;
     background-repeat: no-repeat;
-    background-attachment: fixed; /* Keeps the background stationary on scroll */
+    background-attachment: fixed;
     color:var(--text); 
     font-family:'Poppins', system-ui, sans-serif;
     min-height:100vh; 
@@ -43,7 +42,6 @@
   }
   .wrap{max-width:1200px;margin:0 auto;padding:22px 16px 42px}
   
-  /* --- Unified Header --- */
   .header {
     display: flex;
     justify-content: space-between;
@@ -54,9 +52,8 @@
   }
   .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
   .poke-ball {
-    width: 42px; height: 42px; border-radius: 50%;
-    background: radial-gradient(circle at 50% 50%, #fff 0 22%, #000 23% 29%, #fff 30% 55%, transparent 56%), linear-gradient(#fff 50%, #000 50% 54%, var(--poke-red) 54%);
-    box-shadow: 0 3px 10px rgba(0,0,0,0.35);
+    width: 42px; 
+    height: 42px;
   }
   .logo h1 { margin: 0; font-size: 28px; font-weight: 800; color: var(--text); }
   .nav-buttons { display: flex; gap: 15px; align-items: center; }
@@ -90,7 +87,6 @@
   .dropdown-content a:hover {background-color: var(--card);}
   .dropdown:hover .dropdown-content {display: block;}
 
-  /* Hero Section */
   .hero{ 
     background: linear-gradient(135deg, rgba(27, 79, 142, 0.5), rgba(42, 117, 187, 0.3)), url('https://www.transparenttextures.com/patterns/stardust.png');
     border:1px solid var(--border); box-shadow:var(--shadow);
@@ -163,7 +159,6 @@
   .timeframe-btn.active { background: var(--poke-blue); color: #fff; }
   .chart-container { position: relative; height: 400px; width: 100%; }
 
-  /* Mobile-friendly adjustments */
   @media (max-width: 768px) {
     .wrap {
       padding: 15px;
@@ -173,22 +168,22 @@
       gap: 10px;
     }
     .logo h1 {
-      font-size: 22px; /* Smaller logo text */
+      font-size: 22px;
     }
     .hero-title {
-      font-size: 32px; /* Smaller hero title */
+      font-size: 32px;
     }
     .subtitle {
       font-size: 16px;
     }
     .toolbar {
-      flex-direction: column; /* Stack search bar and buttons */
+      flex-direction: column;
     }
     .search, .btn, .select {
       width: 100%;
     }
     .nav-btn span {
-        display: none; /* Hide text on nav buttons, keep icon */
+        display: none;
     }
     .nav-btn {
         padding: 10px 12px;
@@ -221,7 +216,7 @@
 <div class="wrap">
   <header class="header">
     <a href="/" class="logo">
-        <div class="poke-ball"></div>
+        <img src="https://sdmntprukwest.oaiusercontent.com/files/00000000-b438-6243-8510-287b5ad6f44e/raw?se=2025-08-24T22%3A15%3A56Z&sp=r&sv=2024-08-04&sr=b&scid=2a1178f5-a0d7-5d72-a857-6a1332cec969&skoid=82a3371f-2f6c-4f81-8a78-2701b362559b&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2025-08-24T03%3A28%3A03Z&ske=2025-08-25T03%3A28%3A03Z&sks=b&skv=2024-08-04&sig=7k025LcsCLKiCLHLXDrC4MBXJp0gZiUNBSeyh/xPJzQ%3D" alt="Pokegr Logo" class="poke-ball">
         <h1>POKEGR</h1>
     </a>
     <div class="nav-buttons">
