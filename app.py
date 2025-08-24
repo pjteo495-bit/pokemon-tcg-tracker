@@ -50,6 +50,10 @@ def index():
 def tcg_tracker_page():
     return render_template("tcg_tracker.html")
 
+@app.route("/wallpapers")
+def wallpapers_page():
+    return render_template("wallpapers.html")
+
 @app.route("/top100")
 def top_100_page():
     trending_dir = "Top 100 trending"
