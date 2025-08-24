@@ -69,6 +69,7 @@
         .nav-buttons {
             display: flex;
             gap: 15px;
+            align-items: center;
         }
         .nav-btn {
             display: inline-flex;
@@ -86,6 +87,28 @@
             background: #1b4f8e;
             transform: translateY(-2px);
         }
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: var(--panel);
+            min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        .dropdown-content a {
+            color: var(--text);
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+        .dropdown-content a:hover {background-color: var(--card-bg);}
+        .dropdown:hover .dropdown-content {display: block;}
         @media (max-width: 768px) {
             .header {
                 flex-direction: column;
@@ -118,6 +141,13 @@
                     <i class="fas fa-store"></i>
                     <span>Marketplace</span>
                 </a>
+                <div class="dropdown">
+                    <a href="/wallpapers" class="nav-btn"><i class="fas fa-image"></i> <span>Wallpapers</span></a>
+                    <div class="dropdown-content">
+                        <a href="/wallpapers#pc-wallpapers">PC Wallpapers</a>
+                        <a href="/wallpapers#mobile-wallpapers">Mobile Wallpapers</a>
+                    </div>
+                </div>
             </div>
         </header>
 
