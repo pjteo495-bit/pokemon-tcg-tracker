@@ -61,7 +61,7 @@ def _strip_variant_tags(text: str) -> str:
         return text
     s = str(text)
 
-    # Remove bracket blocks like [Reverse Holo], [1st Edition] if they only contain variant words
+    # FIXED: pass `s` to re.sub
     def _repl(m):
         inside = m.group(1)
         low = inside.lower()
@@ -69,7 +69,7 @@ def _strip_variant_tags(text: str) -> str:
             return ''
         return m.group(0)
 
-    s = re.sub(r'\[(.*?)\]', _repl)
+    s = re.sub(r'\[(.*?)\]', _repl, s)
 
     # Also drop common variant words that appear as loose suffix/prefix (e.g., " - Reverse Holo")
     for w in list(_VARIANT_WORDS):
