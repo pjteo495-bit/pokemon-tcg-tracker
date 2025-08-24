@@ -1,3 +1,4 @@
+# Force-refresh deployment 2025-08-24-v2
 import sys
 from flask import Flask, render_template, request, jsonify
 from time import time
@@ -13,7 +14,6 @@ app = Flask(__name__, template_folder="templates")
 # --- Helper function to parse dates from filenames ---
 def parse_date_from_filename(name):
     """Tries to parse a date from a filename string using common formats."""
-    # List of date formats to try
     formats_to_try = [
         "%d %m %Y",      # e.g., "24 08 2025"
         "%Y-%m-%d",      # e.g., "2025-08-24"
@@ -47,7 +47,7 @@ def tcg_tracker_page():
 
 @app.route("/top100")
 def top_100_page():
-    trending_dir = "Top 100 trending" # Use the relative path
+    trending_dir = "Top 100 trending"
     latest_file = None
     latest_time = 0
     if os.path.isdir(trending_dir):
@@ -78,18 +78,12 @@ def top_100_page():
 
 @app.route("/api/market-status")
 def api_market_status():
-    history_dir = "Greek_Prices_History" # Use the relative path
+    history_dir = "Greek_Prices_History"
     categories = {
-        "Booster Packs": ["Booster Pack"],
-        "Booster Box": ["Booster Box"],
-        "Elite Trainer Box": ["Elite Trainer Box", "ETB"],
-        "Binders": ["Binder"],
-        "Collections": ["Collection"],
-        "Tins": ["Tin"],
-        "Blisters": ["Blister"],
-        "Sleeves": ["Sleeves"],
-        "Booster Bundles": ["Booster Bundle"],
-        "Decks": ["Deck"]
+        "Booster Packs": ["Booster Pack"], "Booster Box": ["Booster Box"],
+        "Elite Trainer Box": ["Elite Trainer Box", "ETB"], "Binders": ["Binder"],
+        "Collections": ["Collection"], "Tins": ["Tin"], "Blisters": ["Blister"],
+        "Sleeves": ["Sleeves"], "Booster Bundles": ["Booster Bundle"], "Decks": ["Deck"]
     }
     cutoff_date = datetime.now() - timedelta(days=30)
     all_data = []
@@ -97,7 +91,6 @@ def api_market_status():
 
     for file_path in files:
         try:
-            # --- FIX: Use the new flexible date parsing function ---
             file_datetime = parse_date_from_filename(os.path.splitext(os.path.basename(file_path))[0])
             if not file_datetime or file_datetime < cutoff_date:
                 continue
@@ -126,8 +119,7 @@ def api_market_status():
     market_status = []
     for category_name, keywords in categories.items():
         cat_df = full_history[full_history[title_col].str.contains('|'.join(keywords), case=False, na=False)]
-        if cat_df.empty:
-            continue
+        if cat_df.empty: continue
 
         changes = []
         for item, group in cat_df.groupby(title_col):
@@ -139,16 +131,13 @@ def api_market_status():
                     percent_change = ((end_price - start_price) / start_price) * 100
                     changes.append(percent_change)
         
-        status = 'yellow'
-        explanation = '(Prices Stable)'
+        status, explanation = 'yellow', '(Prices Stable)'
         if changes:
             avg_change = sum(changes) / len(changes)
             if avg_change > 2.5:
-                status = 'green'
-                explanation = '(Prices Rising)'
+                status, explanation = 'green', '(Prices Rising)'
             elif avg_change < -2.5:
-                status = 'red'
-                explanation = '(Prices Lowering)'
+                status, explanation = 'red', '(Prices Lowering)'
         
         market_status.append({"category": category_name, "status": status, "explanation": explanation})
 
@@ -190,19 +179,19 @@ def api_price_history():
     item_title = request.args.get("title", "").strip()
     if not item_title:
         return jsonify({"error": "Missing item title"}), 400
-    history_dir = "Greek_Prices_History" 
+    history_dir = "Greek_Prices_History"
     price_history = []
     if not os.path.isdir(history_dir):
         return jsonify({"error": "History directory not found"}), 500
+    
     files = glob.glob(os.path.join(history_dir, "*.xlsx")) + glob.glob(os.path.join(history_dir, "*.csv"))
     for file_path in files:
         try:
             filename = os.path.basename(file_path)
             date_str = os.path.splitext(filename)[0]
-            # --- FIX: Use the new flexible date parsing function ---
             file_datetime = parse_date_from_filename(date_str)
             if not file_datetime:
-                continue # Skip if date format is not recognized
+                continue
 
             file_date = file_datetime.strftime("%Y-%m-%d")
             df = pd.read_csv(file_path) if file_path.endswith('.csv') else pd.read_excel(file_path)
@@ -211,7 +200,11 @@ def api_price_history():
             price_col = next((c for c in ['price', 'current_price'] if c in df.columns), None)
             if not title_col or not price_col:
                 continue
-            item_row = df[df[title_col].str.strip() == item_title]
+
+            # --- THE FIX: Make the comparison case-insensitive ---
+            # It now converts both the title from the file and the title from the request to lowercase before comparing.
+            item_row = df[df[title_col].str.strip().str.lower() == item_title.lower()]
+            
             if not item_row.empty:
                 price_str = str(item_row.iloc[0][price_col])
                 price_val = float(price_str.replace('€', '').replace(',', '.').strip())
@@ -219,6 +212,7 @@ def api_price_history():
         except Exception as e:
             print(f"Could not process file {file_path}: {e}")
             continue
+            
     price_history.sort(key=lambda x: x['date'])
     return jsonify(price_history)
 
