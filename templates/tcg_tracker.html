@@ -23,11 +23,18 @@
   }
   body { 
     margin:0; 
-    background:
-      radial-gradient(circle at 10% 20%, rgba(42, 117, 187, 0.15), transparent 40%),
-      radial-gradient(circle at 90% 80%, rgba(77, 173, 91, 0.1), transparent 50%),
-      var(--bg);
-    color:var(--text); font-family:'Poppins', sans-serif; min-height:100vh; 
+    /* --- CHANGE: Added background image with overlay --- */
+    background-color: var(--bg);
+    background-image: 
+        linear-gradient(rgba(11, 18, 32, 0.85), rgba(11, 18, 32, 0.85)), 
+        url('https://cdn.midjourney.com/9fdabdd5-ee83-470f-b488-ecbf9f08ea8b/0_0.png');
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
+    background-attachment: fixed; /* Keeps the background stationary on scroll */
+    color:var(--text); 
+    font-family:'Poppins', sans-serif; 
+    min-height:100vh; 
   }
   .wrap { max-width:1200px; margin:0 auto; padding:22px 16px 42px; }
   
