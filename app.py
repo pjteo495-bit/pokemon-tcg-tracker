@@ -1,4 +1,4 @@
-# Force-refresh deployment 2025-08-24-v2
+# Force-refresh deployment 2025-08-24-v4-BOM-FIX
 import sys
 from flask import Flask, render_template, request, jsonify
 from time import time
@@ -13,13 +13,7 @@ app = Flask(__name__, template_folder="templates")
 
 # --- Helper function to parse dates from filenames ---
 def parse_date_from_filename(name):
-    """Tries to parse a date from a filename string using common formats."""
-    formats_to_try = [
-        "%d %m %Y",      # e.g., "24 08 2025"
-        "%Y-%m-%d",      # e.g., "2025-08-24"
-        "%d-%m-%Y",      # e.g., "24-08-2025"
-        "%m-%d-%Y",      # e.g., "08-24-2025"
-    ]
+    formats_to_try = ["%d %m %Y", "%Y-%m-%d", "%d-%m-%Y", "%m-%d-%Y"]
     for fmt in formats_to_try:
         try:
             return datetime.strptime(name, fmt)
@@ -74,105 +68,52 @@ def top_100_page():
             print(f"Error reading CSV file {latest_file}: {e}")
     return render_template("top100.html", cards=cards)
 
-# --------------- Store APIs ---------------
-
+# --- API Routes ---
 @app.route("/api/market-status")
 def api_market_status():
     history_dir = "Greek_Prices_History"
-    categories = {
-        "Booster Packs": ["Booster Pack"], "Booster Box": ["Booster Box"],
-        "Elite Trainer Box": ["Elite Trainer Box", "ETB"], "Binders": ["Binder"],
-        "Collections": ["Collection"], "Tins": ["Tin"], "Blisters": ["Blister"],
-        "Sleeves": ["Sleeves"], "Booster Bundles": ["Booster Bundle"], "Decks": ["Deck"]
-    }
+    categories = { "Booster Packs": ["Booster Pack"], "Booster Box": ["Booster Box"], "Elite Trainer Box": ["Elite Trainer Box", "ETB"], "Binders": ["Binder"], "Collections": ["Collection"], "Tins": ["Tin"], "Blisters": ["Blister"], "Sleeves": ["Sleeves"], "Booster Bundles": ["Booster Bundle"], "Decks": ["Deck"] }
     cutoff_date = datetime.now() - timedelta(days=30)
     all_data = []
     files = glob.glob(os.path.join(history_dir, "*.xlsx")) + glob.glob(os.path.join(history_dir, "*.csv"))
-
     for file_path in files:
         try:
             file_datetime = parse_date_from_filename(os.path.splitext(os.path.basename(file_path))[0])
-            if not file_datetime or file_datetime < cutoff_date:
-                continue
+            if not file_datetime or file_datetime < cutoff_date: continue
+            
+            if file_path.endswith('.csv'):
+                df = pd.read_csv(file_path, encoding='utf-8-sig')
+            else:
+                df = pd.read_excel(file_path)
 
-            df = pd.read_csv(file_path) if file_path.endswith('.csv') else pd.read_excel(file_path)
-            df.columns = [str(c).lower().strip() for c in df.columns]
-            df['date'] = file_datetime
+            df.columns = [str(c).lower().strip() for c in df.columns]; df['date'] = file_datetime
             all_data.append(df)
         except Exception as e:
-            print(f"Skipping history file {file_path}: {e}")
-            continue
-    
-    if not all_data:
-        return jsonify({"error": "No recent history data found"}), 404
-
+            print(f"Skipping history file {file_path}: {e}"); continue
+    if not all_data: return jsonify({"error": "No recent history data found"}), 404
     full_history = pd.concat(all_data, ignore_index=True)
     title_col = next((c for c in ['item_title', 'title', 'name'] if c in full_history.columns), None)
     price_col = next((c for c in ['price', 'current_price'] if c in full_history.columns), None)
-
-    if not title_col or not price_col:
-        return jsonify({"error": "Could not find title/price columns in history files"}), 500
-
+    if not title_col or not price_col: return jsonify({"error": "Could not find title/price columns"}), 500
     full_history[price_col] = pd.to_numeric(full_history[price_col].astype(str).str.replace('[€,]', '', regex=True), errors='coerce')
     full_history.dropna(subset=[price_col], inplace=True)
-
     market_status = []
     for category_name, keywords in categories.items():
         cat_df = full_history[full_history[title_col].str.contains('|'.join(keywords), case=False, na=False)]
         if cat_df.empty: continue
-
         changes = []
         for item, group in cat_df.groupby(title_col):
             if len(group) > 1:
                 group = group.sort_values('date')
-                start_price = group.iloc[0][price_col]
-                end_price = group.iloc[-1][price_col]
-                if start_price > 0:
-                    percent_change = ((end_price - start_price) / start_price) * 100
-                    changes.append(percent_change)
-        
+                start_price = group.iloc[0][price_col]; end_price = group.iloc[-1][price_col]
+                if start_price > 0: changes.append(((end_price - start_price) / start_price) * 100)
         status, explanation = 'yellow', '(Prices Stable)'
         if changes:
             avg_change = sum(changes) / len(changes)
-            if avg_change > 2.5:
-                status, explanation = 'green', '(Prices Rising)'
-            elif avg_change < -2.5:
-                status, explanation = 'red', '(Prices Lowering)'
-        
+            if avg_change > 2.5: status, explanation = 'green', '(Prices Rising)'
+            elif avg_change < -2.5: status, explanation = 'red', '(Prices Lowering)'
         market_status.append({"category": category_name, "status": status, "explanation": explanation})
-
     return jsonify(market_status)
-
-@app.route("/api/home")
-def api_home():
-    sort = request.args.get("sort", "bestsellers")
-    page = max(1, int(request.args.get("page", 1)))
-    page_size = 24
-    from scraper import search_products_all
-    all_items = search_products_all("", sort=sort)
-    start = (page - 1) * page_size
-    end = start + page_size
-    paginated_items = all_items[start:end]
-    has_more = end < len(all_items)
-    return jsonify({"items": paginated_items, "has_more": has_more, "total": len(all_items)})
-
-@app.route("/api/search")
-def api_search():
-    q = (request.args.get("q") or "").strip()
-    if not q:
-        return jsonify({"items": [], "has_more": False, "total": 0})
-    page = max(1, int(request.args.get("page", 1)))
-    sort = request.args.get("sort", "bestsellers")
-    page_size = 24
-    from scraper import search_products_all
-    all_items = search_products_all(q, sort=sort)
-    start = (page - 1) * page_size
-    end = start + page_size
-    return jsonify({
-        "items": all_items[start:end],
-        "has_more": end < len(all_items),
-        "total": len(all_items)
-    })
 
 @app.route("/api/price-history")
 def api_price_history():
@@ -194,15 +135,19 @@ def api_price_history():
                 continue
 
             file_date = file_datetime.strftime("%Y-%m-%d")
-            df = pd.read_csv(file_path) if file_path.endswith('.csv') else pd.read_excel(file_path)
+
+            # --- THE FIX: Use encoding='utf-8-sig' to handle hidden BOM characters ---
+            if file_path.lower().endswith('.csv'):
+                df = pd.read_csv(file_path, encoding='utf-8-sig')
+            else:
+                df = pd.read_excel(file_path)
+
             df.columns = [str(c).lower().strip() for c in df.columns]
             title_col = next((c for c in ['item_title', 'title', 'name'] if c in df.columns), None)
             price_col = next((c for c in ['price', 'current_price'] if c in df.columns), None)
             if not title_col or not price_col:
                 continue
 
-            # --- THE FIX: Make the comparison case-insensitive ---
-            # It now converts both the title from the file and the title from the request to lowercase before comparing.
             item_row = df[df[title_col].str.strip().str.lower() == item_title.lower()]
             
             if not item_row.empty:
@@ -216,46 +161,47 @@ def api_price_history():
     price_history.sort(key=lambda x: x['date'])
     return jsonify(price_history)
 
+# --- Other API routes (no changes) ---
+@app.route("/api/home")
+def api_home():
+    sort = request.args.get("sort", "bestsellers"); page = max(1, int(request.args.get("page", 1))); page_size = 24
+    from scraper import search_products_all
+    all_items = search_products_all("", sort=sort); start = (page - 1) * page_size; end = start + page_size
+    return jsonify({"items": all_items[start:end], "has_more": end < len(all_items), "total": len(all_items)})
+@app.route("/api/search")
+def api_search():
+    q = (request.args.get("q") or "").strip()
+    if not q: return jsonify({"items": [], "has_more": False, "total": 0})
+    sort = request.args.get("sort", "bestsellers"); page = max(1, int(request.args.get("page", 1))); page_size = 24
+    from scraper import search_products_all
+    all_items = search_products_all(q, sort=sort); start = (page - 1) * page_size; end = start + page_size
+    return jsonify({"items": all_items[start:end], "has_more": end < len(all_items), "total": len(all_items)})
 @app.route("/api/search_skroutz")
 def api_search_skroutz():
-    q = (request.args.get("q") or "").strip()
-    sort = request.args.get("sort", "bestsellers")
+    q = (request.args.get("q") or "").strip(); sort = request.args.get("sort", "bestsellers")
     from scraper import search_products_skroutz
     skroutz_items = search_products_skroutz(q, sort=sort)
-    return jsonify({
-        "items": skroutz_items,
-        "has_more": False,
-        "total": len(skroutz_items)
-    })
-
+    return jsonify({"items": skroutz_items, "has_more": False, "total": len(skroutz_items)})
 @app.route("/api/suggest")
 def api_suggest():
     q = (request.args.get("q") or "").strip()
-    if not q:
-        return jsonify({"items": []})
+    if not q: return jsonify({"items": []})
     from scraper import suggest_titles
     return jsonify({"items": suggest_titles(q, limit=10)})
-
 @app.route("/api/tcg/card")
 def api_tcg_card():
-    from scraper_pokemon import get_card_details
     card_id = (request.args.get("id") or "").strip()
-    if not card_id:
-        return jsonify({"error": "Missing id"}), 400
+    if not card_id: return jsonify({"error": "Missing id"}), 400
+    from scraper_pokemon import get_card_details
     data = get_card_details(card_id)
-    if not data:
-        return jsonify({"error": "Not found"}), 404
+    if not data: return jsonify({"error": "Not found"}), 404
     return jsonify(data)
-
 @app.route("/api/tcg/related")
 def api_tcg_related():
+    set_id = (request.args.get("setId") or "").strip(); rarity = (request.args.get("rarity") or "").strip(); card_id = (request.args.get("cardId") or "").strip()
     from scraper_pokemon import get_related_cards
-    set_id  = (request.args.get("setId") or "").strip()
-    rarity  = (request.args.get("rarity") or "").strip()
-    card_id = (request.args.get("cardId") or "").strip()
     items = get_related_cards(set_id, rarity, card_id, count=8)
     return jsonify({"items": items})
-
 @app.route("/api/tcg/suggest")
 def api_tcg_suggest():
     try:
@@ -263,8 +209,7 @@ def api_tcg_suggest():
         q = (request.args.get("q") or "").strip()
         if not q: return jsonify({"items": []})
         return jsonify({"items": search_pokemon_tcg(q, page_size=12)})
-    except ImportError:
-        return jsonify({"items": []})
+    except ImportError: return jsonify({"items": []})
 
 if __name__ == "__main__":
     app.run(debug=True, use_reloader=False)
