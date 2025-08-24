@@ -4,9 +4,9 @@ import re
 from unicodedata import normalize
 
 try:
-    import pandas as pd
+    import pandas as pd  # type: ignore
 except Exception:
-    pd = None
+    pd = None  # type: ignore
 
 # --- Configuration ---
 DATA_PATH = os.path.join('pokemon-tcg-data-master', 'cards', 'en')
@@ -17,7 +17,7 @@ PRICES_DIR = os.path.join('prices')
 _card_data = []
 _card_dict = {}
 _set_dict = {}
-_price_map = {}
+_price_map = {}                 # (name_norm, set_norm, num_norm) -> prices
 
 # ---------- Normalization ----------
 _alnum = re.compile(r'[^a-z0-9]+')
@@ -34,10 +34,11 @@ def _tokenize(s: str) -> str:
 def _normalize_set(text: str) -> str:
     """
     Final robust normalization for set names.
+    Handles special cases first, then applies general rules.
     """
     s = _tokenize(text)
     
-    # --- Step 1: Handle specific known sets with unique names first ---
+    # --- Step 1: Handle specific, known sets with unique names first ---
     if 'pokemon go' in s:
         return 'go'
     if 'wizards black star promos' in s:
@@ -45,38 +46,22 @@ def _normalize_set(text: str) -> str:
     if 'black star' in s and 'promo' in s:
         return 'black star promo'
         
-    # --- Step 2: Remove only truly generic "stop words" ---
-    stop_words = [
-        'pokemon', 'tcg', 'the', 'trading', 'card', 'game', 
-        'series', 'set', 'edition', 'and'
-    ]
-    
-    # --- Step 3: Handle series names carefully ---
+    # --- Step 2: Apply the original, reliable cleaning logic for all other sets ---
+    s = re.sub(r'\b(1st|first|edition|shadowless)\b', '', s)
+    s = re.sub(r'\b(pokemon|tcg|the|trading|card|game|series)\b', '', s)
     series_patterns = [
-        r'diamond\s*pearl', r'black\s*white',
-        r'sun\s*moon', r'sword\s*shield',
-        r'scarlet\s*violet', r'heartgold\s*soulsilver',
+        r'diamond\s*(?:&|and)?\s*pearl', r'black\s*(?:&|and)?\s*white',
+        r'sun\s*(?:&|and)?\s*moon', r'sword\s*(?:&|and)?\s*shield',
+        r'scarlet\s*(?:&|and)?\s*violet', r'heartgold\s*(?:&|and)?\s*soulsilver',
     ]
-
-    temp_s = s
     for pat in series_patterns:
-        # Remove the series name from the string
-        temp_s = re.sub(r'\b' + pat + r'\b', '', temp_s).strip()
-    
-    # If removing the series name left a meaningful part, use the result.
-    # Otherwise (e.g., the name was ONLY the series name), revert to the original.
-    if temp_s and len(temp_s) > 2:
-        s = temp_s
-
-    # --- Step 4: Remove stop words from the result ---
-    words = s.split()
-    filtered_words = [word for word in words if word not in stop_words]
-    
-    final_s = ' '.join(filtered_words).strip()
-    
-    # If everything was stripped away (e.g., for "Base Set"), return the original tokenized string
-    return final_s if final_s else s
-
+        s = re.sub(r'\b' + pat + r'\b', '', s)
+    s = re.sub(r'\b(?:dp|bw|xy|sm|swsh|sv|hgss)\b', '', s)
+    s = re.sub(r'\b(wizards|wotc)\b', '', s)
+    s = ' '.join([word for word in s.split() if word != 'set'])
+    s = re.sub(r'\bpromos\b', 'promo', s)
+    s = re.sub(r'\s+', ' ', s).strip()
+    return s
 
 def _normalize_number(num) -> str:
     s = str(num or '').strip().lower()
@@ -97,7 +82,7 @@ def load_data():
     if _card_data:
         return
 
-    print(f"Loading sets from: {SETS_PATH}")
+    # Load sets
     if os.path.isdir(SETS_PATH):
         for filename in os.listdir(SETS_PATH):
             if filename.endswith(".json"):
@@ -110,7 +95,7 @@ def load_data():
                     except json.JSONDecodeError:
                         print(f"Warning: Could not decode JSON from set file {filename}")
 
-    print(f"Loading cards from: {DATA_PATH}")
+    # Load cards
     if os.path.isdir(DATA_PATH):
         for filename in os.listdir(DATA_PATH):
             if not filename.endswith('.json'): continue
