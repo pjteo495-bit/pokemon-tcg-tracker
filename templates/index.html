@@ -25,6 +25,9 @@
     --shadow:0 8px 26px rgba(0,0,0,.30);
   }
   *{box-sizing:border-box}
+  html {
+    scroll-behavior: smooth;
+  }
   body{
     margin:0;
     background-color: var(--bg);
@@ -187,12 +190,27 @@
     .nav-btn span {
         display: none;
     }
+    /* Show span for the market overview button specifically */
+    #toggleMarketStatusBtn span {
+        display: inline;
+    }
     .nav-btn {
         padding: 10px 12px;
     }
     .grid{
         grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
         gap: 10px;
+    }
+    /* Make market status grid 2 columns on mobile */
+    .market-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    .market-tag {
+        font-size: 12px;
+        padding: 8px 10px;
+        text-align: center;
     }
     .card img {
         width: 100%;
