@@ -213,9 +213,17 @@ def api_tcg_card():
     return jsonify(data)
 @app.route("/api/tcg/related")
 def api_tcg_related():
-    set_id = (request.args.get("setId") or "").strip(); rarity = (request.args.get("rarity") or "").strip(); card_id = (request.args.get("cardId") or "").strip()
+    set_id = (request.args.get("setId") or "").strip()
+    rarity = (request.args.get("rarity") or "").strip()
+    card_id = (request.args.get("cardId") or "").strip()
+    # Read the 'count' from the request, default to 8 if not provided
+    try:
+        count = int(request.args.get("count", 8))
+    except ValueError:
+        count = 8
+        
     from scraper_pokemon import get_related_cards
-    items = get_related_cards(set_id, rarity, card_id, count=8)
+    items = get_related_cards(set_id, rarity, card_id, count=count)
     return jsonify({"items": items})
 @app.route("/api/tcg/suggest")
 def api_tcg_suggest():
