@@ -334,23 +334,13 @@ def get_price_override(name, set_name, number):
     for nm_k in nm_candidates:
         for nn_k in nn_candidates:
             cand_list = _by_name_num.get((nm_k, nn_k), [])
-            # First pass: immediate exact set match
             for (set_k, val) in cand_list:
-                if set_k and set_k == set_norm:
-                    return val
-            # Second pass: wildcard or fuzzy
-            for (set_k, val) in cand_list:
-                if not set_k:
-                    if best is None:
-                        best = val
-                        best_score = 0.5
-                    continue
                 score = _set_similarity(set_norm, set_k)
                 if score > best_score:
                     best_score = score
                     best = val
 
-    if best and best_score >= 0.5:  # allow wildcard or decent fuzzy match
+    if best and best_score >= 0.72:  # conservative threshold
         return best
 
     return None
@@ -490,7 +480,7 @@ def _load_price_data():
     loaded = 0
     for row in rows:
         name_k   = _col(row, 'name', 'card name', 'card', 'title', 'card_title')
-        set_k    = _col(row, 'set', 'set name', 'subset', 'series', 'expansion')  # do NOT use 'game' ('Pokemon') as set
+        set_k    = _col(row, 'set', 'set name', 'game')
         num_k    = _col(row, 'number', 'no', '#')
         raw_k    = _col(row, 'raw price', 'raw', 'price', 'unguided_price')
         psa9_k   = _col(row, 'psa 9 price', 'psa9 price', 'psa9', 'psa9_price')
