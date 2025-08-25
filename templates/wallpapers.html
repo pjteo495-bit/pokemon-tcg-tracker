@@ -20,10 +20,14 @@
             --muted: #a7b6d6;
             --border: #23314c;
         }
+        html {
+            scroll-behavior: smooth;
+        }
         body {
             font-family: 'Poppins', sans-serif;
             background-color: var(--bg);
             color: var(--text);
+            overflow-x: hidden; /* Prevents horizontal scrolling */
         }
         .header {
             display: flex;
@@ -87,6 +91,18 @@
         .download-btn:hover {
             background: #3c8a48;
         }
+        /* Style for the sticky navigation and scroll offset */
+        #pc-wallpapers, #mobile-wallpapers {
+            scroll-margin-top: 80px; /* Adjust this value to match your sticky nav's height */
+        }
+        @media (max-width: 768px) {
+            .nav-btn span {
+                display: none;
+            }
+            .nav-btn {
+                padding: 10px 12px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -112,6 +128,20 @@
                 </a>
             </div>
         </header>
+
+        <!-- Sticky Navigation for Wallpaper Sections -->
+        <div class="sticky top-0 z-40 py-3 bg-panel/80 backdrop-blur-lg border-b border-border -mx-4 px-4 mb-8">
+            <div class="container mx-auto flex justify-center gap-6 sm:gap-8">
+                <a href="#pc-wallpapers" class="font-bold text-lg text-muted hover:text-poke-yellow transition-colors duration-200 flex items-center gap-2">
+                    <i class="fas fa-desktop"></i>
+                    <span class="hidden sm:inline">PC Wallpapers</span>
+                </a>
+                <a href="#mobile-wallpapers" class="font-bold text-lg text-muted hover:text-poke-yellow transition-colors duration-200 flex items-center gap-2">
+                    <i class="fas fa-mobile-alt"></i>
+                    <span class="hidden sm:inline">Mobile Wallpapers</span>
+                </a>
+            </div>
+        </div>
 
         <div class="text-center mb-10">
             <h2 class="text-4xl md:text-5xl font-bold text-white">Download Pokémon Wallpapers</h2>
@@ -298,4 +328,3 @@
 
 </body>
 </html>
-
