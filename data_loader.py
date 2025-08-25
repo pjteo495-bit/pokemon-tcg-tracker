@@ -12,6 +12,41 @@ try:
 except Exception:
     pd = None  # type: ignore
 
+# --- Price lookup globals (indexes) ---
+_price_map = {}
+_price_index = set()  # set of (name_norm, num_norm) pairs we have in CSV
+_by_name_num = {}     # (name_norm, num_norm) -> list of (set_norm, val)
+
+from difflib import SequenceMatcher
+def _token_set(s: str):
+    return set((s or '').split())
+
+def _set_similarity(a: str, b: str) -> float:
+    """Blend Jaccard over tokens with SequenceMatcher for robust fuzzy matching."""
+    ta, tb = _token_set(a), _token_set(b)
+    if not ta or not tb:
+        jac = 0.0
+    else:
+        jac = len(ta & tb) / max(1, len(ta | tb))
+    seq = SequenceMatcher(None, a, b).ratio()
+    return 0.6 * jac + 0.4 * seq
+
+
+
+from difflib import SequenceMatcher
+def _token_set(s: str):
+    return set((s or '').split())
+
+def _set_similarity(a: str, b: str) -> float:
+    """Blend Jaccard over tokens with SequenceMatcher for robust fuzzy matching."""
+    ta, tb = _token_set(a), _token_set(b)
+    if not ta or not tb:
+        jac = 0.0
+    else:
+        jac = len(ta & tb) / max(1, len(ta | tb))
+    seq = SequenceMatcher(None, a, b).ratio()
+    return 0.6 * jac + 0.4 * seq
+
 # --- Configuration ---
 DATA_PATH = os.path.join('pokemon-tcg-data-master', 'cards', 'en')
 SETS_PATH = os.path.join('pokemon-tcg-data-master', 'sets', 'en')
@@ -271,29 +306,67 @@ def get_local_related_cards(set_id, rarity, current_card_id, count=5):
 
 # ---------- Price overrides ----------
 def get_price_override(name, set_name, number):
-    global _price_map
-    # Primary key
+    """Return the price dict for a given (name, set, number) using robust matching.
+    Exact match first, then fallbacks (raw-name & digits-only), then fuzzy set-match
+    restricted to rows that share the same (name, number)."""
+    global _price_map, _price_index
     name_norm = _name_norm(name)
     set_norm  = _normalize_set(set_name)
     num_norm  = _normalize_number(number)
 
-    val = _price_map.get((name_norm, set_norm, num_norm))
-    if val:
-        return val
+    # --- 1) Exact & standard fallbacks (existing logic) ---
+    for nm in (name_norm, _name_norm_raw(name)):
+        for nn in (num_norm, _digits_only(num_norm)):
+            if not nn:
+                continue
+            v = _price_map.get((nm, set_norm, nn))
+            if v:
+                return v
 
-    # Fallback 1: try raw-name normalization (without variant stripping)
-    val = _price_map.get((_name_norm_raw(name), set_norm, num_norm))
-    if val:
-        return val
+    # --- 2) Fuzzy set match limited to same (name, number) ---
+    nm_candidates = {name_norm, _name_norm_raw(name)}
+    nn_candidates = {num_norm, _digits_only(num_norm)}
+    nn_candidates = {x for x in nn_candidates if x}
 
-    # Fallback 2: digits-only number (handles e.g., 83 vs BW83)
-    num_digits = _digits_only(num_norm)
-    if num_digits:
-        val = _price_map.get((name_norm, set_norm, num_digits)) or _price_map.get((_name_norm_raw(name), set_norm, num_digits))
-        if val:
-            return val
+    best = None
+    best_score = 0.0
+    # Use index for candidates
+    for nm_k in nm_candidates:
+        for nn_k in nn_candidates:
+            cand_list = _by_name_num.get((nm_k, nn_k), [])
+            for (set_k, val) in cand_list:
+                score = _set_similarity(set_norm, set_k)
+                if score > best_score:
+                    best_score = score
+                    best = val
+
+    if best and best_score >= 0.72:  # conservative threshold
+        return best
 
     return None
+
+def get_price_override_ex(name, set_name, number):
+    """Like get_price_override but returns (value, reason).
+    reason ∈ {'found', 'unmatched_set', 'absent_in_csv'}
+    """
+    global _price_map, _price_index
+    val = get_price_override(name, set_name, number)
+    if val is not None:
+        return val, 'found'
+
+    # Normalize variants
+    nm_vars = { _name_norm(name), _name_norm_raw(name) }
+    nn_raw  = _normalize_number(number)
+    nn_vars = { nn_raw, _digits_only(nn_raw) }
+    nn_vars = {x for x in nn_vars if x}
+
+    # Check if CSV has any rows for this (name, number) ignoring set
+    exists_any = any(((nm, nn) in _price_index) for nm in nm_vars for nn in nn_vars)
+    if exists_any:
+        return None, 'unmatched_set'
+    else:
+        return None, 'absent_in_csv'
+
 
 def refresh_price_data():
     _load_price_data()
@@ -359,6 +432,9 @@ def _insert_price_key(price_map, key, price_obj, score):
 def _load_price_data():
     global _price_map
     _price_map = {}
+    global _price_index, _by_name_num
+    _price_index = set()
+    _by_name_num = {}
 
     path = _find_latest_price_file()
     if not path:
@@ -455,8 +531,11 @@ def _load_price_data():
         score      = richness + (2 if not is_variant else 0)
 
         for nm in {name_norm_base, name_norm_raw}:
+            # record index for (name, number) presence
+            _price_index.add((nm, num_norm))
             price_key = (nm, set_norm, num_norm)
             _insert_price_key(_price_map, price_key, price_obj, score)
+            _by_name_num.setdefault((nm, num_norm), []).append((set_norm, price_obj))
             # Extra fallback using digits-only number (e.g., 'H6' -> '6')
             try:
                 num_digits = _digits_only(num_norm)
