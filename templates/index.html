@@ -348,6 +348,7 @@
   let priceChart = null;
   let currentHistoryData = [];
   let marketStatusLoaded = false; // Flag to check if market status is loaded
+  let isMarketStatusFetching = false; // Flag to prevent multiple fetches
 
   function cardHTML(p){
     const safeTitle = (p.title || '').replace(/"/g, '&quot;');
@@ -376,6 +377,9 @@
   }
 
   async function fetchMarketStatus() {
+      if (isMarketStatusFetching) return;
+      isMarketStatusFetching = true;
+      marketGrid.innerHTML = '<div class="spinner" style="display: block; margin: 20px auto;"></div>';
       try {
           const url = new URL('api/market-status', BASE_URL);
           const response = await fetch(url);
@@ -398,9 +402,12 @@
           } else {
               marketGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">No market status data available.</p>';
           }
+          marketStatusLoaded = true;
       } catch (e) {
           console.error("Failed to fetch market status:", e);
           marketGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">Error loading market status.</p>';
+      } finally {
+          isMarketStatusFetching = false;
       }
   }
 
@@ -591,23 +598,24 @@
       });
   });
 
-  toggleMarketStatusBtn.addEventListener('click', async () => {
+  // Prefetch market status on hover
+  toggleMarketStatusBtn.addEventListener('mouseenter', () => {
+      if (!marketStatusLoaded && !isMarketStatusFetching) {
+          fetchMarketStatus();
+      }
+  });
+
+  toggleMarketStatusBtn.addEventListener('click', () => {
       const isVisible = marketStatusContainer.style.display === 'block';
-      if (isVisible) {
-          marketStatusContainer.style.display = 'none';
-      } else {
-          marketStatusContainer.style.display = 'block';
-          if (!marketStatusLoaded) {
-              marketGrid.innerHTML = '<div class="spinner" style="display: block; margin: 20px auto;"></div>';
-              await fetchMarketStatus();
-              marketStatusLoaded = true;
-          }
+      marketStatusContainer.style.display = isVisible ? 'none' : 'block';
+      // If it's being shown but data hasn't been loaded yet (e.g., on a touch device)
+      if (!isVisible && !marketStatusLoaded) {
+          fetchMarketStatus();
       }
   });
 
   document.addEventListener('DOMContentLoaded', () => {
     fetchPage(1, false);
-    // fetchMarketStatus(); // No longer called on initial page load
   });
 </script>
 </body>
