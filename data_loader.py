@@ -83,6 +83,12 @@ def _normalize_set(text: str) -> str:
     Make set names comparable across CSV and local data.
     """
     s = _tokenize(_unescape_decode(text))
+
+    # Canonicalize known set aliases (fixes Expedition)
+    # Collapse variations like 'Expedition Base Set', 'Pokemon Expedition', etc. -> 'expedition'
+    s = re.sub(r'\bexpedition base(?: set)?\b', 'expedition', s)
+    s = re.sub(r'\bpokemon expedition\b', 'expedition', s)
+
     s = re.sub(r'\b(1st|first|edition|shadowless)\b', '', s)
     s = re.sub(r'\b(pokemon|tcg|the|trading|card|game|series)\b', '', s)
     series_patterns = [
@@ -451,6 +457,14 @@ def _load_price_data():
         for nm in {name_norm_base, name_norm_raw}:
             price_key = (nm, set_norm, num_norm)
             _insert_price_key(_price_map, price_key, price_obj, score)
+            # Extra fallback using digits-only number (e.g., 'H6' -> '6')
+            try:
+                num_digits = _digits_only(num_norm)
+                if num_digits and num_digits != num_norm:
+                    price_key_digits = (nm, set_norm, num_digits)
+                    _insert_price_key(_price_map, price_key_digits, price_obj, score - 0.1)
+            except Exception:
+                pass
             loaded += 1
 
     print(f"Loaded {loaded} price override rows (with fallback keys).")
