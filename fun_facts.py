@@ -267,12 +267,13 @@ ALL_SPECIFIC_FACTS = {**ORIGINAL_151_FACTS, **GEN_2_FACTS}
 # Examples handled:
 # 'Lugia EX', 'Lugia ex', 'M Charizard-EX', 'Charizard VSTAR', 'Charizard VMAX',
 # 'Radiant Greninja', 'Shining Mew', 'Galarian Moltres V', 'Lugia & Ho-Oh GX' (keeps first)
+# 'Rocket's Wobbuffet', 'Team Aqua's Kyogre', 'Umbreon δ'
 _VARIANT_SUFFIX_RE = re.compile(
     r"\s*(?:-?\s*(?:ex|gx|v(?:max|star|\s*-?union)?|prime|break|legend))\b.*$",
     flags=re.IGNORECASE,
 )
 _VARIANT_PREFIX_RE = re.compile(
-    r"^(?:mega|m|radiant|shining|primal|alolan|galarian|hisuian|paldean|shadow|dark|light)\s+",
+    r"^(?:mega|m|radiant|shining|primal|alolan|galarian|hisuian|paldean|shadow|dark|light|rocket's|team aqua's|team magma's)\s+",
     flags=re.IGNORECASE,
 )
 
@@ -287,7 +288,10 @@ def _base_species_name(name: str) -> str:
     # Remove suffix mechanics (EX/GX/V/VMAX/VSTAR/V-UNION/etc.)
     s = _VARIANT_SUFFIX_RE.sub("", s)
 
-    # Remove leading descriptors (Mega, Radiant, Shining, regional forms, etc.)
+    # Remove Delta Species symbol
+    s = re.sub(r"\s*δ.*$", "", s, flags=re.IGNORECASE)
+
+    # Remove leading descriptors (Mega, Radiant, Shining, regional forms, owner's name, etc.)
     s = _VARIANT_PREFIX_RE.sub("", s)
 
     # Collapse whitespace
