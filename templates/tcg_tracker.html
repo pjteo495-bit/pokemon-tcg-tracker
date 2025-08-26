@@ -157,6 +157,33 @@
     }
   }
 
+  .random-cards-section { margin-top: 40px; }
+  .random-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+  }
+  .random-card {
+    background-color: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .random-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px -3px rgba(42, 117, 187, 0.2);
+  }
+  .random-card img {
+    width: 100%;
+    height: 200px;
+    object-fit: contain;
+    background: white;
+    border-radius: 8px;
+    margin-bottom: 10px;
+  }
+
 
   @media (max-width: 768px) {
     .wrap {
@@ -234,6 +261,11 @@
     <div id="tcgSuggest" class="suggest"></div>
   </div>
 
+  <div class="random-cards-section">
+    <h3 style="font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 20px; text-align: center;">Maybe looking for one of these?</h3>
+    <div id="randomCardGrid" class="random-cards-grid"></div>
+  </div>
+
   <div id="tcgResults">
   </div>
 </div>
@@ -242,6 +274,7 @@
   const tcgSearch = document.getElementById('tcgSearch');
   const tcgSuggest = document.getElementById('tcgSuggest');
   const tcgResults = document.getElementById('tcgResults');
+  const randomCardGrid = document.getElementById('randomCardGrid');
   let suggestController = null;
   const cardDetailCache = new Map();
 
@@ -398,6 +431,27 @@
       }
     }
   }
+
+  async function loadRandomCards() {
+    try {
+        const response = await fetch('/api/tcg/random-trending');
+        if (!response.ok) return;
+        const cards = await response.json();
+        randomCardGrid.innerHTML = cards.map(card => `
+            <div class="random-card">
+                <img src="${card.image_url}" alt="${card.item_title}">
+                <h4 class="font-bold text-md truncate">${card.item_title}</h4>
+                <p class="text-lg font-semibold text-blue-400">${card.price}</p>
+                <div class="mt-2 flex gap-2">
+                    <a href="https://www.tcgplayer.com/search/pokemon/product?q=${encodeURIComponent(card.item_title)}" target="_blank" rel="noopener noreferrer" class="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-2 rounded-lg text-sm">TCGplayer</a>
+                    <a href="https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(card.item_title)} Pokemon TCG" target="_blank" rel="noopener noreferrer" class="flex-1 text-center bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-2 rounded-lg text-sm">eBay</a>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error("Failed to load random cards:", error);
+    }
+  }
   
   const handleSearchInput = debounce(async (event) => {
     const query = event.target.value.trim();
@@ -436,6 +490,8 @@
     const cardId = urlParams.get('cardId');
     if (cardId) {
         handleLoadCard(cardId);
+    } else {
+        loadRandomCards();
     }
   });
 </script>
