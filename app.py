@@ -60,6 +60,50 @@ def item_page():
     # Renders index.html but sets the 'mode' to 'detail' to show the item view
     return render_template("index.html", mode="detail", item=item_details, base_url=request.url_root)
 
+@app.route("/tcg-tracker")
+def tcg_tracker_page():
+    """Renders the TCG Tracker page."""
+    # This route now correctly serves the main search page, which is index.html
+    tz = pytz.timezone('Europe/Athens')
+    current_date = datetime.now(tz).strftime("%d %B %Y")
+    return render_template("index.html", base_url=request.url_root, current_date=current_date)
+
+@app.route("/wallpapers")
+def wallpapers_page():
+    """Renders the wallpapers page."""
+    return render_template("wallpapers.html")
+
+@app.route("/top100")
+def top_100_page():
+    """Renders the Top 100 trending cards page."""
+    trending_dir = "Top 100 trending"
+    latest_file = None
+    latest_time = 0
+    if os.path.isdir(trending_dir):
+        for item in os.listdir(trending_dir):
+            item_path = os.path.join(trending_dir, item)
+            if os.path.isdir(item_path):
+                try:
+                    csv_path = os.path.join(item_path, 'pokemon_wizard_prices.csv')
+                    if os.path.exists(csv_path):
+                        mtime = os.path.getmtime(csv_path)
+                        if mtime > latest_time:
+                            latest_time = mtime
+                            latest_file = csv_path
+                except Exception:
+                    continue
+    cards = []
+    if latest_file:
+        try:
+            with open(latest_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    cards.append(row)
+        except Exception as e:
+            print(f"Error reading CSV file {latest_file}: {e}")
+    return render_template("top100.html", cards=cards)
+
+
 # --- API Routes ---
 @app.route("/api/market-status")
 def api_market_status():
