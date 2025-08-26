@@ -68,29 +68,7 @@
     cursor: pointer; border: none; font-family: 'Poppins', sans-serif;
   }
   .nav-btn:hover { background: #1b4f8e; transform: translateY(-2px); }
-  .dropdown {
-    position: relative;
-    display: inline-block;
-  }
-  .dropdown-content {
-    display: none;
-    position: absolute;
-    background-color: var(--panel);
-    min-width: 160px;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-    z-index: 1;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-  }
-  .dropdown-content a {
-    color: var(--text);
-    padding: 12px 16px;
-    text-decoration: none;
-    display: block;
-  }
-  .dropdown-content a:hover {background-color: var(--card);}
-  .dropdown:hover .dropdown-content {display: block;}
-
+  
   .hero{ 
     background: linear-gradient(135deg, rgba(27, 79, 142, 0.5), rgba(42, 117, 187, 0.3)), url('https://www.transparenttextures.com/patterns/stardust.png');
     border:1px solid var(--border); box-shadow:var(--shadow);
@@ -105,18 +83,6 @@
       margin: 0 0 8px 0;
   }
   .subtitle{color:rgba(255,255,255,.95);font-weight:500;letter-spacing:.4px; margin-bottom: 8px;}
-  .unique-items-count { color:rgba(255,255,255,.95); font-weight: 500; margin-bottom: 24px; font-size: 1.1em; }
-  
-  .market-status { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin: 24px 0; }
-  .market-title { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 8px; }
-  .market-date { font-size: 14px; font-weight: 500; text-align: center; color: var(--muted); margin-bottom: 16px; }
-  .market-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
-  .market-tag { padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 14px; text-decoration: none; transition: transform 0.2s ease; cursor: pointer;}
-  .market-tag:hover { transform: translateY(-2px); }
-  .status-green { background-color: rgba(77, 173, 91, 0.2); color: #34D399; }
-  .status-red { background-color: rgba(238, 21, 21, 0.2); color: #F87171; }
-  .status-yellow { background-color: rgba(255, 204, 0, 0.2); color: #FFCC00; }
-  .market-tag .explanation { font-weight: 500; font-size: 12px; opacity: 0.8; margin-left: 4px; }
   
   .toolbar{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;}
   .search{position:relative;flex:1;min-width:280px;max-width:720px}
@@ -127,7 +93,6 @@
     background:linear-gradient(135deg, var(--poke-yellow), #ffc400); color:#1a237e; box-shadow:0 6px 18px rgba(0,0,0,.25); }
   .select{ height:52px;border-radius:12px;border:1px solid var(--border);
     background:var(--panel);color:#fff;padding:0 12px;font-weight:700; }
-  .select, .select option { color:#fff; background:var(--panel); }
   .suggest{ position:absolute;left:0;right:0;top:56px;z-index:100; background:var(--panel);border:1px solid var(--border);
     border-radius:12px;box-shadow:var(--shadow); display:none;max-height:420px;overflow:auto }
   .sug-item{ display:grid;grid-template-columns:50px 1fr auto;gap:12px;align-items:center;
@@ -139,8 +104,7 @@
   .card{ background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px;
     box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;gap:10px; transition: all 0.2s ease; }
   .card:hover { transform: translateY(-4px); border-color: var(--poke-blue); }
-  .imgwrap{display:block;width:100%;text-align:center}
-  .card img{width:210px;height:210px;object-fit:contain;background:#fff;border-radius:12px;}
+  .card img{width:100%; height: 210px; object-fit:contain;background:#fff;border-radius:12px;}
   .title{font-weight:700;text-align:center;line-height:1.4;min-height:3.5em;color:#fff}
   .price{color:var(--poke-yellow);font-weight:800;font-size:20px}
   .card-buttons { display: flex; gap: 10px; margin-top: auto; }
@@ -150,84 +114,56 @@
   .view:hover, .history-btn:hover { filter: brightness(1.15); }
   .loadwrap{display:flex;justify-content:center;margin-top:22px;gap:12px;align-items:center}
   .loadmore{background:linear-gradient(135deg, var(--poke-blue), #1b4f8e);color:#fff;border:none;border-radius:12px;height:46px;padding:0 18px;font-weight:800;cursor:pointer;display:none;}
-  .loadmore:hover{ filter:brightness(1.05) }
   .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: var(--poke-yellow); animation: spin 1s linear infinite; display: none; }
   @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-  .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); display: none; align-items: center; justify-content: center; z-index: 1000; }
-  .modal-content { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 24px; width: 90%; max-width: 800px; box-shadow: var(--shadow); }
-  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-  .modal-title { font-size: 24px; font-weight: 700; }
-  .modal-close { background: none; border: none; font-size: 24px; color: var(--muted); cursor: pointer; }
-  .modal-body { }
-  .timeframe-btns { display: flex; gap: 10px; margin-bottom: 16px; }
+  
+  .timeframe-btns { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
   .timeframe-btn { background: var(--chip); color: var(--text); border: 1px solid var(--border); padding: 8px 16px; border-radius: 8px; cursor: pointer; }
   .timeframe-btn.active { background: var(--poke-blue); color: #fff; }
   .chart-container { position: relative; height: 400px; width: 100%; }
 
+  /* --- Styles for Item Detail Page --- */
+  .item-detail-container {
+    display: grid; grid-template-columns: 1fr 2fr; gap: 30px;
+    background: var(--panel); padding: 24px; border-radius: 18px;
+    border: 1px solid var(--border); margin-bottom: 24px;
+  }
+  .item-image img {
+    width: 100%; max-width: 400px; object-fit: contain;
+    background: #fff; border-radius: 12px;
+  }
+  .item-info h2 { font-size: 28px; margin-top: 0; line-height: 1.3; }
+  .item-info .price { font-size: 32px; color: var(--poke-yellow); font-weight: 800; margin: 10px 0; }
+  .view-on-site-btn {
+    display: inline-block; padding: 12px 24px; background: var(--poke-blue);
+    color: white; border-radius: 12px; text-decoration: none; font-weight: 700;
+    margin-top: 20px; transition: transform .2s ease;
+  }
+  .view-on-site-btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
+  .section-title {
+    font-size: 24px; font-weight: 700; margin: 2rem 0 1rem 0;
+    padding-bottom: 10px; border-bottom: 2px solid var(--poke-blue);
+  }
+  .history-section, .related-section {
+      background: var(--panel); padding: 24px; border-radius: 18px;
+      border: 1px solid var(--border); margin-bottom: 24px;
+  }
+
+
   @media (max-width: 768px) {
-    .wrap {
-      padding: 15px;
-    }
-    .header {
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-    .logo h1 {
-      font-size: 22px;
-    }
-    .hero-title {
-      font-size: 32px;
-    }
-    .subtitle, .unique-items-count {
-      font-size: 16px;
-    }
-    .toolbar {
-      flex-direction: column;
-    }
-    .search, .btn, .select {
-      width: 100%;
-    }
-    .nav-btn span {
-        display: none;
-    }
-    /* Show span for the market overview button specifically */
-    #toggleMarketStatusBtn span {
-        display: inline;
-    }
-    .nav-btn {
-        padding: 10px 12px;
-    }
     .grid{
         grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
         gap: 10px;
     }
-    /* Make market status grid 2 columns on mobile */
-    .market-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 8px;
-    }
-    .market-tag {
-        font-size: 12px;
-        padding: 8px 10px;
-        text-align: center;
-    }
     .card img {
-        width: 100%;
-        height: auto;
+        height: 150px;
     }
     .title {
         font-size: 14px;
         min-height: 3em;
     }
-    .price {
-        font-size: 16px;
-    }
-    .view, .history-btn {
-        height: 38px;
-        padding: 0 12px;
-        font-size: 14px;
-    }
+    .item-detail-container { grid-template-columns: 1fr; }
+    .item-info h2 { font-size: 22px; }
   }
 </style>
 </head>
@@ -240,44 +176,61 @@
         <h1>POKEGR</h1>
     </a>
     <div class="nav-buttons">
-        <a href="/tcg-tracker" class="nav-btn"><i class="fas fa-search"></i> <span>TCG Tracker</span></a>
-        <a href="/top100" class="nav-btn"><i class="fas fa-fire"></i> <span>Top 100</span></a>
-        <div class="dropdown">
-            <a href="/wallpapers" class="nav-btn"><i class="fas fa-image"></i> <span>Wallpapers</span></a>
-            <div class="dropdown-content">
-                <a href="/wallpapers#pc-wallpapers">PC Wallpapers</a>
-                <a href="/wallpapers#mobile-wallpapers">Mobile Wallpapers</a>
-            </div>
-        </div>
+        <a href="/" class="nav-btn"><i class="fas fa-search"></i> <span>TCG Tracker</span></a>
     </div>
   </header>
 
+  {% if mode == 'detail' %}
+
+  <!-- ======================= -->
+  <!-- == ITEM DETAIL VIEW  == -->
+  <!-- ======================= -->
+  <div class="item-detail-container">
+    <div class="item-image">
+        <img src="{{ item.image_url }}" alt="{{ item.title }}" onerror="this.style.visibility='hidden'">
+    </div>
+    <div class="item-info">
+        <h2>{{ item.title }}</h2>
+        <div class="price">{{ item.price }}</div>
+        <p>Source: <span style="text-transform: capitalize;">{{ item.source }}</span></p>
+        <a href="{{ item.url }}" target="_blank" rel="noopener" class="view-on-site-btn">
+            View on {{ item.source | capitalize }} &nbsp;<i class="fas fa-external-link-alt"></i>
+        </a>
+    </div>
+  </div>
+
+  <div class="history-section">
+      <h3 class="section-title">Price History</h3>
+      <div class="timeframe-btns">
+          <button class="timeframe-btn active" data-range="1">1M</button>
+          <button class="timeframe-btn" data-range="3">3M</button>
+          <button class="timeframe-btn" data-range="6">6M</button>
+          <button class="timeframe-btn" data-range="12">1Y</button>
+      </div>
+      <div class="chart-container">
+          <canvas id="priceChart" style="display: none;"></canvas>
+      </div>
+      <div id="chartLoader" class="spinner" style="margin: 40px auto; display: block;"></div>
+      <p id="noHistoryMsg" style="text-align: center; color: var(--muted); display: none;">No price history available for this item.</p>
+  </div>
+
+  <div class="related-section">
+      <h3 class="section-title">People Also Viewed</h3>
+      <div id="relatedGrid" class="grid"></div>
+      <div id="relatedLoader" class="spinner" style="margin: 20px auto; display: block;"></div>
+  </div>
+
+  {% else %}
+
+  <!-- ======================= -->
+  <!-- == MAIN SEARCH VIEW  == -->
+  <!-- ======================= -->
   <div class="hero">
     <h2 class="hero-title">POKEGR TCG TRACKER</h2>
     <div class="subtitle">Catch the best Greek Pokémon TCG prices — fast.</div>
-    <p class="unique-items-count">Currently: 9142 unique items</p>
-
-    <!-- New Button to toggle market status -->
-    <div style="text-align: center; margin-bottom: 24px;">
-        <button id="toggleMarketStatusBtn" class="nav-btn" style="background-color: var(--poke-green);">
-            <i class="fas fa-chart-line"></i>
-            <span>View Greek Market Overview</span>
-        </button>
-    </div>
-
-    <div id="marketStatus" class="market-status" style="display: none;">
-        <h3 class="market-title">GREEK MARKET STATUS</h3>
-        <p class="market-date">{{ current_date }}</p>
-        <p style="text-align: center; color: var(--muted); font-size: 14px; max-width: 600px; margin: 0 auto 16px;">
-            This is an overview of the Greek Pokémon TCG market based on price changes over the last 30 days. Click on a category to search for related products.
-        </p>
-        <div id="marketGrid" class="market-grid">
-        </div>
-    </div>
-
     <div class="toolbar">
       <div class="search">
-        <input id="q" type="text" placeholder="Search products and cards in the Greek market" autocomplete="off"/>
+        <input id="q" type="text" placeholder="Search products and cards..." autocomplete="off"/>
         <div id="suggest" class="suggest" aria-hidden="true"></div>
       </div>
       <button class="btn" id="btnSearch">Search</button>
@@ -297,141 +250,43 @@
       <div id="loadingSpinner" class="spinner" aria-hidden="true"></div>
     </div>
   </div>
-</div>
 
-<div id="historyModal" class="modal-overlay">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h2 id="modalTitle" class="modal-title">Price History</h2>
-      <button id="modalClose" class="modal-close">&times;</button>
-    </div>
-    <div class="modal-body">
-      <div class="timeframe-btns">
-        <button class="timeframe-btn active" data-range="1">1M</button>
-        <button class="timeframe-btn" data-range="3">3M</button>
-        <button class="timeframe-btn" data-range="6">6M</button>
-        <button class="timeframe-btn" data-range="12">1Y</button>
-      </div>
-      <div class="chart-container">
-          <canvas id="priceChart"></canvas>
-      </div>
-      <div id="modalLoader" class="spinner" style="margin: 40px auto;"></div>
-    </div>
-  </div>
+  {% endif %}
 </div>
 
 
 <script>
+  // Use the 'mode' variable from Flask/Jinja2 to determine which script to run
+  const PAGE_MODE = '{{ mode or "search" }}';
   const BASE_URL = '{{ base_url }}';
-  const grid = document.getElementById('grid');
-  const sortSel = document.getElementById('sort');
-  const qInput = document.getElementById('q');
-  const btnSearch = document.getElementById('btnSearch');
-  const suggestBox = document.getElementById('suggest');
-  const loadMoreBtn = document.getElementById('loadMore');
-  const loadingSpinner = document.getElementById('loadingSpinner');
-  const marketStatusContainer = document.getElementById('marketStatus');
-  const marketGrid = document.getElementById('marketGrid');
-  const historyModal = document.getElementById('historyModal');
-  const modalTitle = document.getElementById('modalTitle');
-  const modalClose = document.getElementById('modalClose');
-  const modalLoader = document.getElementById('modalLoader');
-  const chartCanvas = document.getElementById('priceChart');
-  const chartContainer = chartCanvas.parentElement;
-  const timeframeBtns = document.querySelectorAll('.timeframe-btn');
-  const toggleMarketStatusBtn = document.getElementById('toggleMarketStatusBtn');
 
-  let currentQuery = '';
-  let currentPage = 1;
-  let isLoading = false;
-  let lastHasMore = false;
-  let priceChart = null;
-  let currentHistoryData = [];
-  let marketStatusLoaded = false; // Flag to check if market status is loaded
-  let isMarketStatusFetching = false; // Flag to prevent multiple fetches
+  // --- SHARED FUNCTIONS (used by both pages) ---
+  function cardHTML(p) {
+      const safeTitle = (p.title || '').replace(/"/g, '&quot;');
+      // Build the URL for the item detail page with all necessary info
+      const itemParams = new URLSearchParams({
+          title: p.title || '',
+          price: p.price || '',
+          image_url: p.image_url || '',
+          url: p.url || '',
+          source: p.source || ''
+      }).toString();
+      
+      const detailUrl = `${BASE_URL}item?${itemParams}`;
 
-  function cardHTML(p){
-    const safeTitle = (p.title || '').replace(/"/g, '&quot;');
-    return `
-      <div class="card">
-        <a class="imgwrap" href="${p.url || '#'}" target="_blank" rel="noopener">
-          <img src="${p.image_url || ''}" loading="lazy" alt="${safeTitle}" onerror="this.style.visibility='hidden'">
-        </a>
-        <div class="title">${safeTitle}</div>
-        <div class="price">${p.price || ''}</div>
-        <div class="card-buttons">
-            <a class="view" href="${p.url || '#'}" target="_blank" rel="noopener">View</a>
-            <button class="history-btn" data-title="${safeTitle}">History</button>
-        </div>
-      </div>`;
+      return `
+        <div class="card">
+          <a class="imgwrap" href="${detailUrl}">
+            <img src="${p.image_url || ''}" loading="lazy" alt="${safeTitle}" onerror="this.style.visibility='hidden'">
+          </a>
+          <div class="title">${safeTitle}</div>
+          <div class="price">${p.price || ''}</div>
+          <div class="card-buttons">
+              <a class="view" href="${detailUrl}">View Details</a>
+          </div>
+        </div>`;
   }
-
-  function render(items, append=false){
-    if(!append){ grid.innerHTML=''; }
-    if (items && items.length){
-      grid.insertAdjacentHTML('beforeend', items.map(cardHTML).join(''));
-    }
-    loadingSpinner.style.display = 'none';
-    isLoading = false;
-    loadMoreBtn.style.display = lastHasMore ? 'inline-block' : 'none';
-  }
-
-  async function fetchMarketStatus() {
-      if (isMarketStatusFetching) return;
-      isMarketStatusFetching = true;
-      marketGrid.innerHTML = '<div class="spinner" style="display: block; margin: 20px auto;"></div>';
-      try {
-          const url = new URL('api/market-status', BASE_URL);
-          const response = await fetch(url);
-          if (!response.ok) {
-              marketGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">Could not load market status.</p>';
-              return;
-          }
-          const data = await response.json();
-          if (data && data.length) {
-              marketGrid.innerHTML = data.map(item => {
-                  let searchTerm = item.category;
-                  if (searchTerm.endsWith('s')) {
-                      searchTerm = searchTerm.slice(0, -1);
-                  }
-                  return `
-                  <a href="#" class="market-tag status-${item.status}" data-category="${searchTerm}">
-                      ${item.category} <span class="explanation">${item.explanation}</span>
-                  </a>`;
-              }).join('');
-          } else {
-              marketGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">No market status data available.</p>';
-          }
-          marketStatusLoaded = true;
-      } catch (e) {
-          console.error("Failed to fetch market status:", e);
-          marketGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">Error loading market status.</p>';
-      } finally {
-          isMarketStatusFetching = false;
-      }
-  }
-
-  async function fetchPage(page=1, append=false) {
-    if (isLoading) return;
-    isLoading = true;
-    loadingSpinner.style.display = 'block';
-    loadMoreBtn.style.display = 'none';
-    const isHomepage = !currentQuery.trim();
-    const path = isHomepage 
-      ? `api/home?sort=${encodeURIComponent(sortSel.value)}&page=${page}`
-      : `api/search?q=${encodeURIComponent(currentQuery)}&page=${page}&sort=${encodeURIComponent(sortSel.value)}`;
-    const fullUrl = new URL(path, BASE_URL);
-    try {
-        const r = await fetch(fullUrl);
-        const data = await r.json();
-        lastHasMore = !!data.has_more;
-        render(data.items || [], append);
-        currentPage = page;
-    } catch (e) {
-        console.error("Fetch failed:", e);
-    }
-  }
-
+  
   async function fetchHistory(title) {
       const url = new URL(`api/price-history?title=${encodeURIComponent(title)}`, BASE_URL);
       const response = await fetch(url);
@@ -440,44 +295,18 @@
       }
       return await response.json();
   }
-
-  function doSearchFromInput(){
-    currentQuery = qInput.value.trim();
-    currentPage = 1;
-    suggestBox.style.display='none';
-    fetchPage(1, false);
-  }
   
-  async function showSuggest(){
-    const q = qInput.value.trim();
-    if(q.length<2){ suggestBox.style.display='none'; return; }
-    try{
-      const suggestUrl = new URL(`api/suggest?q=${encodeURIComponent(q)}`, BASE_URL);
-      const r = await fetch(suggestUrl);
-      const data = await r.json();
-      const items = (data.items || []).slice(0, 12);
-      if(!items.length){ suggestBox.style.display='none'; return; }
-      suggestBox.innerHTML = items.map(it=>`
-        <div class="sug-item" data-title="${(it.title||'').replace(/"/g,'&quot;')}">
-          <img src="${it.image_url||''}" alt="">
-          <div>${it.title||''}</div>
-          <div>${it.price||''}</div>
-        </div>`).join('');
-      suggestBox.style.display='block';
-    }catch(e){ console.error(e); }
-  }
-
   function processDataForChart(data, months) {
       const now = new Date();
       const cutoff = new Date();
       cutoff.setMonth(now.getMonth() - months);
       const filtered = data.filter(d => new Date(d.date) >= cutoff);
-      if (months === 1) {
+      if (months === 1) { // For 1 month, show daily data
           return filtered.map(d => ({ x: d.date, y: d.price }));
-      } else {
+      } else { // For longer periods, average by month
           const monthly = {};
           filtered.forEach(d => {
-              const month = d.date.substring(0, 7);
+              const month = d.date.substring(0, 7); // e.g., "2023-08"
               if (!monthly[month]) {
                   monthly[month] = { sum: 0, count: 0 };
               }
@@ -490,12 +319,10 @@
           }));
       }
   }
-
-  function drawChart(data, timeframe) {
-      if (priceChart) {
-          priceChart.destroy();
-      }
-      priceChart = new Chart(chartCanvas, {
+  
+  function drawChart(canvasEl, data, timeframe) {
+      // Returns a new Chart.js instance
+      return new Chart(canvasEl, {
           type: 'line',
           data: {
               datasets: [{
@@ -511,112 +338,176 @@
               scales: {
                   x: {
                       type: 'time', time: { unit: timeframe === 1 ? 'day' : 'month' },
-                      ticks: { color: '#a7b6d6', font: { size: 12, family: 'Poppins' }, maxTicksLimit: 10 },
-                      grid: { color: 'rgba(255,255,255,0.1)' }
+                      ticks: { color: '#a7b6d6' }, grid: { color: 'rgba(255,255,255,0.1)' }
                   },
                   y: {
-                      ticks: { color: '#a7b6d6', font: { size: 12, family: 'Poppins' }, callback: value => `€${value.toFixed(2)}` },
+                      ticks: { color: '#a7b6d6', callback: value => `€${value.toFixed(2)}` },
                       grid: { color: 'rgba(255,255,255,0.1)' }
                   }
               },
               plugins: {
                   legend: { display: false },
-                  tooltip: {
-                      backgroundColor: '#16223a', titleColor: '#eaf1ff', bodyColor: '#a7b6d6',
-                      titleFont: { size: 14, family: 'Poppins' }, bodyFont: { size: 12, family: 'Poppins' },
-                      padding: 10, cornerRadius: 8, displayColors: false,
-                  }
+                  tooltip: { backgroundColor: '#16223a', padding: 10, cornerRadius: 8 }
               }
           }
       });
   }
 
-  async function openHistoryModal(title) {
-      historyModal.style.display = 'flex';
-      modalTitle.textContent = `Price History for ${title}`;
-      modalLoader.style.display = 'block';
-      chartContainer.style.display = 'none';
-      if(priceChart) priceChart.destroy();
+  // --- PAGE-SPECIFIC LOGIC ---
+  if (PAGE_MODE === 'detail') {
+    // --- ITEM DETAIL PAGE SCRIPT ---
+    const currentItem = {
+      title: {{ item.title | tojson }},
+      url: {{ item.url | tojson }}
+    };
+    
+    const chartCanvas = document.getElementById('priceChart');
+    const chartLoader = document.getElementById('chartLoader');
+    const noHistoryMsg = document.getElementById('noHistoryMsg');
+    const timeframeBtns = document.querySelectorAll('.timeframe-btn');
+    const relatedGrid = document.getElementById('relatedGrid');
+    const relatedLoader = document.getElementById('relatedLoader');
+    let priceChart = null;
+    let currentHistoryData = [];
+
+    async function initializeDetailPage() {
+        // Fetch and render the price history chart
+        try {
+            currentHistoryData = await fetchHistory(currentItem.title);
+            chartLoader.style.display = 'none';
+            if (currentHistoryData.length > 0) {
+                chartCanvas.style.display = 'block';
+                priceChart = drawChart(chartCanvas, currentHistoryData, 1);
+            } else {
+                noHistoryMsg.style.display = 'block';
+            }
+        } catch (e) {
+            console.error("Failed to load history", e);
+            chartLoader.style.display = 'none';
+            noHistoryMsg.textContent = 'Could not load price history.';
+            noHistoryMsg.style.display = 'block';
+        }
+
+        // Fetch and render related items
+        try {
+            const params = new URLSearchParams({ title: currentItem.title, url: currentItem.url });
+            const relatedUrl = new URL(`api/related-products?${params.toString()}`, BASE_URL);
+            const r = await fetch(relatedUrl);
+            const data = await r.json();
+            relatedLoader.style.display = 'none';
+            if (data.items && data.items.length) {
+              relatedGrid.innerHTML = data.items.map(cardHTML).join('');
+            } else {
+              relatedGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">No related items found.</p>';
+            }
+        } catch(e) {
+            console.error("Failed to load related items", e);
+            relatedLoader.style.display = 'none';
+            relatedGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">Error loading related items.</p>';
+        }
+    }
+
+    // Add event listeners for the timeframe buttons (1M, 3M, etc.)
+    timeframeBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (!currentHistoryData.length) return;
+            timeframeBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const range = parseInt(btn.dataset.range, 10);
+            if (priceChart) priceChart.destroy(); // Clear old chart before drawing new one
+            priceChart = drawChart(chartCanvas, currentHistoryData, range);
+        });
+    });
+
+    document.addEventListener('DOMContentLoaded', initializeDetailPage);
+
+  } else {
+    // --- SEARCH PAGE SCRIPT ---
+    const grid = document.getElementById('grid');
+    const sortSel = document.getElementById('sort');
+    const qInput = document.getElementById('q');
+    const btnSearch = document.getElementById('btnSearch');
+    const suggestBox = document.getElementById('suggest');
+    const loadMoreBtn = document.getElementById('loadMore');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+
+    let currentQuery = '';
+    let currentPage = 1;
+    let isLoading = false;
+    let lastHasMore = false;
+
+    function render(items, append=false){
+      if(!append){ grid.innerHTML=''; }
+      if (items && items.length){
+        grid.insertAdjacentHTML('beforeend', items.map(cardHTML).join(''));
+      }
+      loadingSpinner.style.display = 'none';
+      isLoading = false;
+      loadMoreBtn.style.display = lastHasMore ? 'inline-block' : 'none';
+    }
+
+    async function fetchPage(page=1, append=false) {
+      if (isLoading) return;
+      isLoading = true;
+      loadingSpinner.style.display = 'block';
+      loadMoreBtn.style.display = 'none';
+      const isHomepage = !currentQuery.trim();
+      const path = isHomepage 
+        ? `api/home?sort=${encodeURIComponent(sortSel.value)}&page=${page}`
+        : `api/search?q=${encodeURIComponent(currentQuery)}&page=${page}&sort=${encodeURIComponent(sortSel.value)}`;
+      const fullUrl = new URL(path, BASE_URL);
       try {
-          currentHistoryData = await fetchHistory(title);
-          if (currentHistoryData.length === 0) {
-              modalLoader.parentElement.innerHTML += '<p id="noDataMsg" style="text-align: center; color: var(--muted);">No price history available for this item.</p>';
-          } else {
-              chartContainer.style.display = 'block';
-              const noDataMsg = document.getElementById('noDataMsg');
-              if(noDataMsg) noDataMsg.remove();
-              drawChart(currentHistoryData, 1);
-          }
-      } catch (error) {
-          console.error(error);
-          modalLoader.parentElement.innerHTML += '<p id="noDataMsg" style="text-align: center; color: var(--poke-red);">Could not load price history.</p>';
-      } finally {
-          modalLoader.style.display = 'none';
+          const r = await fetch(fullUrl);
+          const data = await r.json();
+          lastHasMore = !!data.has_more;
+          render(data.items || [], append);
+          currentPage = page;
+      } catch (e) {
+          console.error("Fetch failed:", e);
+          isLoading = false; // Reset loading state on error
       }
+    }
+
+    function doSearchFromInput(){
+      currentQuery = qInput.value.trim();
+      currentPage = 1;
+      suggestBox.style.display='none';
+      fetchPage(1, false);
+    }
+    
+    async function showSuggest(){
+      const q = qInput.value.trim();
+      if(q.length<2){ suggestBox.style.display='none'; return; }
+      try{
+        const suggestUrl = new URL(`api/suggest?q=${encodeURIComponent(q)}`, BASE_URL);
+        const r = await fetch(suggestUrl);
+        const data = await r.json();
+        const items = (data.items || []).slice(0, 12);
+        if(!items.length){ suggestBox.style.display='none'; return; }
+        suggestBox.innerHTML = items.map(it=>`
+          <div class="sug-item" data-title="${(it.title||'').replace(/"/g,'&quot;')}">
+            <img src="${it.image_url||''}" alt="">
+            <div>${it.title||''}</div>
+            <div>${it.price||''}</div>
+          </div>`).join('');
+        suggestBox.style.display='block';
+      }catch(e){ console.error(e); }
+    }
+
+    // --- Event Listeners for Search Page ---
+    loadMoreBtn.addEventListener('click', () => fetchPage(currentPage + 1, true));
+    btnSearch.onclick = doSearchFromInput;
+    qInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); doSearchFromInput(); } });
+    sortSel.onchange = () => { if (qInput.value.trim()) { doSearchFromInput(); } else { fetchPage(1, false); } };
+    qInput.addEventListener('input', showSuggest);
+    document.addEventListener('click', (e)=>{ if(!suggestBox.contains(e.target) && e.target!==qInput){ suggestBox.style.display='none'; } });
+    suggestBox.addEventListener('click', (e)=>{ const item = e.target.closest('.sug-item'); if(!item) return; qInput.value = item.getAttribute('data-title') || qInput.value; suggestBox.style.display='none'; doSearchFromInput(); });
+
+    // Initial page load
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchPage(1, false);
+    });
   }
-
-  function closeHistoryModal() {
-      historyModal.style.display = 'none';
-      const noDataMsg = document.getElementById('noDataMsg');
-      if(noDataMsg) noDataMsg.remove();
-  }
-
-  loadMoreBtn.addEventListener('click', () => fetchPage(currentPage + 1, true));
-  btnSearch.onclick = doSearchFromInput;
-  qInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); doSearchFromInput(); } });
-  sortSel.onchange = () => { currentPage = 1; doSearchFromInput(); };
-  qInput.addEventListener('input', showSuggest);
-  document.addEventListener('click', (e)=>{ if(!suggestBox.contains(e.target) && e.target!==qInput){ suggestBox.style.display='none'; } });
-  suggestBox.addEventListener('click', (e)=>{ const item = e.target.closest('.sug-item'); if(!item) return; qInput.value = item.getAttribute('data-title') || qInput.value; suggestBox.style.display='none'; doSearchFromInput(); });
-  grid.addEventListener('click', (e) => {
-      if (e.target.classList.contains('history-btn')) {
-          const title = e.target.dataset.title;
-          openHistoryModal(title);
-      }
-  });
-  marketGrid.addEventListener('click', (e) => {
-      e.preventDefault();
-      const tag = e.target.closest('.market-tag');
-      if (tag && tag.dataset.category) {
-          qInput.value = tag.dataset.category;
-          doSearchFromInput();
-          window.scrollTo({ top: qInput.offsetTop - 20, behavior: 'smooth' });
-      }
-  });
-  modalClose.addEventListener('click', closeHistoryModal);
-  historyModal.addEventListener('click', (e) => {
-      if (e.target === historyModal) {
-          closeHistoryModal();
-      }
-  });
-  timeframeBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-          timeframeBtns.forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          const range = parseInt(btn.dataset.range, 10);
-          drawChart(currentHistoryData, range);
-      });
-  });
-
-  // Prefetch market status on hover
-  toggleMarketStatusBtn.addEventListener('mouseenter', () => {
-      if (!marketStatusLoaded && !isMarketStatusFetching) {
-          fetchMarketStatus();
-      }
-  });
-
-  toggleMarketStatusBtn.addEventListener('click', () => {
-      const isVisible = marketStatusContainer.style.display === 'block';
-      marketStatusContainer.style.display = isVisible ? 'none' : 'block';
-      // If it's being shown but data hasn't been loaded yet (e.g., on a touch device)
-      if (!isVisible && !marketStatusLoaded) {
-          fetchMarketStatus();
-      }
-  });
-
-  document.addEventListener('DOMContentLoaded', () => {
-    fetchPage(1, false);
-  });
 </script>
 </body>
 </html>
