@@ -356,6 +356,8 @@
   // --- PAGE-SPECIFIC LOGIC ---
   if (PAGE_MODE === 'detail') {
     // --- ITEM DETAIL PAGE SCRIPT ---
+    // This block is only entered when the page is in 'detail' mode,
+    // so `item` will be defined.
     const currentItem = {
       title: {{ item.title | tojson }},
       url: {{ item.url | tojson }}
