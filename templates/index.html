@@ -464,6 +464,26 @@
     // --- SEARCH SCRIPT (runs on both pages) ---
     const qInput = document.getElementById('q');
     const btnSearch = document.getElementById('btnSearch');
+    const suggestBox = document.getElementById('suggest');
+
+    async function showSuggest(){
+      const q = qInput.value.trim();
+      if(q.length<2){ suggestBox.style.display='none'; return; }
+      try{
+        const suggestUrl = new URL(`api/suggest?q=${encodeURIComponent(q)}`, BASE_URL);
+        const r = await fetch(suggestUrl);
+        const data = await r.json();
+        const items = (data.items || []).slice(0, 12);
+        if(!items.length){ suggestBox.style.display='none'; return; }
+        suggestBox.innerHTML = items.map(it=>`
+          <div class="sug-item" data-title="${(it.title||'').replace(/"/g,'&quot;')}">
+            <img src="${it.image_url||''}" alt="">
+            <div>${it.title||''}</div>
+            <div>${it.price||''}</div>
+          </div>`).join('');
+        suggestBox.style.display='block';
+      }catch(e){ console.error(e); }
+    }
 
     function doSearchFromInput(){
       const query = qInput.value.trim();
@@ -480,6 +500,15 @@
                 doSearchFromInput(); 
             } 
         });
+        qInput.addEventListener('input', showSuggest);
+        document.addEventListener('click', (e)=>{ if(!suggestBox.contains(e.target) && e.target!==qInput){ suggestBox.style.display='none'; } });
+        suggestBox.addEventListener('click', (e)=>{ 
+            const item = e.target.closest('.sug-item'); 
+            if(!item) return; 
+            qInput.value = item.getAttribute('data-title') || qInput.value; 
+            suggestBox.style.display='none'; 
+            doSearchFromInput();
+        });
     }
 </script>
 
@@ -488,7 +517,7 @@
     // --- SEARCH PAGE SCRIPT (only runs on the main page) ---
     const grid = document.getElementById('grid');
     const sortSel = document.getElementById('sort');
-    const suggestBox = document.getElementById('suggest');
+    
     const loadMoreBtn = document.getElementById('loadMore');
     const loadingSpinner = document.getElementById('loadingSpinner');
     const marketStatusContainer = document.getElementById('marketStatus');
@@ -569,37 +598,8 @@
       }
     }
     
-    async function showSuggest(){
-      const q = qInput.value.trim();
-      if(q.length<2){ suggestBox.style.display='none'; return; }
-      try{
-        const suggestUrl = new URL(`api/suggest?q=${encodeURIComponent(q)}`, BASE_URL);
-        const r = await fetch(suggestUrl);
-        const data = await r.json();
-        const items = (data.items || []).slice(0, 12);
-        if(!items.length){ suggestBox.style.display='none'; return; }
-        suggestBox.innerHTML = items.map(it=>`
-          <div class="sug-item" data-title="${(it.title||'').replace(/"/g,'&quot;')}">
-            <img src="${it.image_url||''}" alt="">
-            <div>${it.title||''}</div>
-            <div>${it.price||''}</div>
-          </div>`).join('');
-        suggestBox.style.display='block';
-      }catch(e){ console.error(e); }
-    }
-
     loadMoreBtn.addEventListener('click', () => fetchPage(currentPage + 1, true));
     sortSel.onchange = () => { currentQuery = qInput.value.trim(); fetchPage(1, false); };
-    qInput.addEventListener('input', showSuggest);
-    document.addEventListener('click', (e)=>{ if(!suggestBox.contains(e.target) && e.target!==qInput){ suggestBox.style.display='none'; } });
-    suggestBox.addEventListener('click', (e)=>{ 
-        const item = e.target.closest('.sug-item'); 
-        if(!item) return; 
-        qInput.value = item.getAttribute('data-title') || qInput.value; 
-        suggestBox.style.display='none'; 
-        currentQuery = qInput.value.trim();
-        fetchPage(1, false);
-    });
 
     marketGrid.addEventListener('click', (e) => {
         e.preventDefault();
