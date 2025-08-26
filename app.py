@@ -12,8 +12,9 @@ from datetime import datetime, timedelta
 import pytz
 
 # --- Local Imports ---
-# Make sure scraper.py is in the same directory
+# Make sure scraper.py and scraper_pokemon.py are in the same directory
 import scraper 
+import scraper_pokemon
 
 app = Flask(__name__, template_folder="templates")
 
@@ -248,6 +249,37 @@ def api_suggest():
     q = (request.args.get("q") or "").strip()
     if not q: return jsonify({"items": []})
     return jsonify({"items": scraper.suggest_titles(q, limit=10)})
+
+# --- TCG TRACKER API ROUTES ---
+@app.route("/api/tcg/suggest")
+def api_tcg_suggest():
+    """Provides card suggestions for the TCG tracker."""
+    q = (request.args.get("q") or "").strip()
+    if not q: return jsonify({"items": []})
+    return jsonify({"items": scraper_pokemon.search_pokemon_tcg(q, page_size=12)})
+
+@app.route("/api/tcg/card")
+def api_tcg_card():
+    """Fetches detailed information for a specific card."""
+    card_id = (request.args.get("id") or "").strip()
+    if not card_id: return jsonify({"error": "Missing id"}), 400
+    data = scraper_pokemon.get_card_details(card_id)
+    if not data: return jsonify({"error": "Not found"}), 404
+    return jsonify(data)
+
+@app.route("/api/tcg/related")
+def api_tcg_related():
+    """Fetches cards related to a given card."""
+    set_id = (request.args.get("setId") or "").strip()
+    rarity = (request.args.get("rarity") or "").strip()
+    card_id = (request.args.get("cardId") or "").strip()
+    try:
+        count = int(request.args.get("count", 8))
+    except ValueError:
+        count = 8
+    items = scraper_pokemon.get_related_cards(set_id, rarity, card_id, count=count)
+    return jsonify({"items": items})
+
 
 if __name__ == "__main__":
     app.run(debug=True, use_reloader=True)
