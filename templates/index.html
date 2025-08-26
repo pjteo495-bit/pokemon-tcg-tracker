@@ -234,10 +234,17 @@
         <h2>{{ item.title }}</h2>
         <div class="price">{{ item.price }}</div>
         <div id="priceTrendSummary" class="price-trend-summary"></div>
-        <p>Source: <span style="text-transform: capitalize;">{{ item.source }}</span></p>
-        <a href="{{ item.url }}" target="_blank" rel="noopener" class="view-on-site-btn">
-            Visit Store &nbsp;<i class="fas fa-external-link-alt"></i>
-        </a>
+        <div class="flex gap-4 mt-4">
+            <a href="{{ item.url }}" target="_blank" rel="noopener" class="view-on-site-btn">
+                Visit Store &nbsp;<i class="fas fa-external-link-alt"></i>
+            </a>
+            <a href="https://www.tcgplayer.com/search/pokemon/product?q={{ item.title|urlencode }}" target="_blank" rel="noopener" class="view-on-site-btn" style="background-color: #1a237e;">
+                Check TCGplayer
+            </a>
+            <a href="https://www.ebay.com/sch/i.html?_nkw={{ item.title|urlencode }} Pokemon" target="_blank" rel="noopener" class="view-on-site-btn" style="background-color: #5a5a5a;">
+                Check eBay
+            </a>
+        </div>
     </div>
   </div>
 
