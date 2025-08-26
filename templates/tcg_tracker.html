@@ -146,17 +146,6 @@
   .attack-damage { font-size:16px; margin-bottom:10px; }
   .attack-text { font-size:15px; line-height:1.5; color:var(--muted); }
   
-  #relatedGrid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 20px;
-  }
-  @media (min-width: 992px) {
-    #relatedGrid {
-      grid-template-columns: repeat(6, 1fr);
-    }
-  }
-
   .random-cards-section { margin-top: 40px; }
   .random-cards-grid {
     display: grid;
@@ -182,6 +171,30 @@
     background: white;
     border-radius: 8px;
     margin-bottom: 10px;
+  }
+  .random-card-btn {
+    display: inline-block;
+    padding: 8px 12px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all .2s ease;
+    flex: 1;
+  }
+  .random-card-btn.tcgplayer {
+    background-color: var(--poke-blue);
+    color: white;
+  }
+  .random-card-btn.tcgplayer:hover {
+    background-color: #1b4f8e;
+  }
+  .random-card-btn.ebay {
+    background-color: var(--chip);
+    color: var(--text);
+  }
+  .random-card-btn.ebay:hover {
+    background-color: var(--panel);
   }
 
 
@@ -252,7 +265,9 @@
   </header>
 
   <div class="main-title-container">
-      <h2 class="main-title">POKEGR TCG TRACKER</h2>
+      <a href="/tcg-tracker" style="text-decoration: none;">
+        <h2 class="main-title">POKEGR TCG TRACKER</h2>
+      </a>
   </div>
 
   <div class="tcg-search">
@@ -387,26 +402,9 @@
             </div>
           </div>
           ${attacksHtml ? `<div id="attacksSection"><h3 style="font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 20px;">Attacks & Abilities</h3><div class="attacks-grid">${attacksHtml}</div></div>` : ''}
-          <div id="relatedSection" style="display: none; margin-top: 30px;"><h3 style="font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 20px;">You might also like:</h3><div id="relatedGrid"></div></div>
         </div>`;
   }
   
-  function renderRelatedCards(cards) {
-    const grid = document.getElementById('relatedGrid');
-    const container = document.getElementById('relatedSection');
-    if (!cards || !cards.length || !grid || !container) {
-      if(container) container.style.display = 'none';
-      return;
-    }
-    grid.innerHTML = cards.map(card => `
-      <div class="related-card" data-id="${card.id}" style="cursor: pointer; text-align: center;">
-        <img src="${card.smallImage}" alt="${card.name}" style="width: 100%; border-radius: 8px; background: white;">
-        <p style="font-weight: 600; font-size: 14px; margin: 8px 0 0;">${card.name}</p>
-      </div>`
-    ).join('');
-    container.style.display = 'block';
-  }
-
   async function handleLoadCard(cardId, cardName = '') {
     if (randomCardsSection) {
         randomCardsSection.style.display = 'none';
@@ -427,13 +425,6 @@
     }
     tcgResults.innerHTML = renderCardDetails(card);
     window.scrollTo({ top: tcgSearch.offsetTop, behavior: 'smooth' });
-    if (card.setId && card.rarity) {
-      const resp = await fetch(`/api/tcg/related?setId=${card.setId}&rarity=${encodeURIComponent(card.rarity)}&cardId=${card.id}&count=12`);
-      if (resp.ok) {
-        const related = (await resp.json()).items || [];
-        renderRelatedCards(related);
-      }
-    }
   }
 
   async function loadRandomCards() {
@@ -447,8 +438,8 @@
                 <h4 class="font-bold text-md truncate">${card.item_title}</h4>
                 <p class="text-lg font-semibold text-blue-400">${card.price}</p>
                 <div class="mt-2 flex gap-2">
-                    <a href="https://www.tcgplayer.com/search/pokemon/product?q=${encodeURIComponent(card.item_title)}" target="_blank" rel="noopener noreferrer" class="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-2 rounded-lg text-sm">TCGplayer</a>
-                    <a href="https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(card.item_title)} Pokemon TCG" target="_blank" rel="noopener noreferrer" class="flex-1 text-center bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-2 rounded-lg text-sm">eBay</a>
+                    <a href="https://www.tcgplayer.com/search/pokemon/product?q=${encodeURIComponent(card.item_title)}" target="_blank" rel="noopener noreferrer" class="random-card-btn tcgplayer">TCGplayer</a>
+                    <a href="https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(card.item_title)} Pokemon TCG" target="_blank" rel="noopener noreferrer" class="random-card-btn ebay">eBay</a>
                 </div>
             </div>
         `).join('');
