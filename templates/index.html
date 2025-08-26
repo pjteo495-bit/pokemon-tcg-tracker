@@ -84,6 +84,17 @@
   }
   .subtitle{color:rgba(255,255,255,.95);font-weight:500;letter-spacing:.4px; margin-bottom: 8px;}
   
+  .market-status { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin: 24px 0; }
+  .market-title { font-size: 22px; font-weight: 700; text-align: center; margin-bottom: 8px; }
+  .market-date { font-size: 14px; font-weight: 500; text-align: center; color: var(--muted); margin-bottom: 16px; }
+  .market-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+  .market-tag { padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 14px; text-decoration: none; transition: transform 0.2s ease; cursor: pointer;}
+  .market-tag:hover { transform: translateY(-2px); }
+  .status-green { background-color: rgba(77, 173, 91, 0.2); color: #34D399; }
+  .status-red { background-color: rgba(238, 21, 21, 0.2); color: #F87171; }
+  .status-yellow { background-color: rgba(255, 204, 0, 0.2); color: #FFCC00; }
+  .market-tag .explanation { font-weight: 500; font-size: 12px; opacity: 0.8; margin-left: 4px; }
+
   .toolbar{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;}
   .search{position:relative;flex:1;min-width:280px;max-width:720px}
   .search input{ width:100%;height:52px;border-radius:12px;border:1px solid var(--border);
@@ -228,6 +239,24 @@
   <div class="hero">
     <h2 class="hero-title">POKEGR TCG TRACKER</h2>
     <div class="subtitle">Catch the best Greek Pokémon TCG prices — fast.</div>
+    
+    <div style="text-align: center; margin-bottom: 24px;">
+        <button id="toggleMarketStatusBtn" class="nav-btn" style="background-color: var(--poke-green);">
+            <i class="fas fa-chart-line"></i>
+            <span>View Greek Market Overview</span>
+        </button>
+    </div>
+
+    <div id="marketStatus" class="market-status" style="display: none;">
+        <h3 class="market-title">GREEK MARKET STATUS</h3>
+        <p class="market-date">{{ current_date }}</p>
+        <p style="text-align: center; color: var(--muted); font-size: 14px; max-width: 600px; margin: 0 auto 16px;">
+            This is an overview of the Greek Pokémon TCG market based on price changes over the last 30 days. Click on a category to search for related products.
+        </p>
+        <div id="marketGrid" class="market-grid">
+        </div>
+    </div>
+    
     <div class="toolbar">
       <div class="search">
         <input id="q" type="text" placeholder="Search products and cards..." autocomplete="off"/>
@@ -423,11 +452,16 @@
     const suggestBox = document.getElementById('suggest');
     const loadMoreBtn = document.getElementById('loadMore');
     const loadingSpinner = document.getElementById('loadingSpinner');
+    const marketStatusContainer = document.getElementById('marketStatus');
+    const marketGrid = document.getElementById('marketGrid');
+    const toggleMarketStatusBtn = document.getElementById('toggleMarketStatusBtn');
 
     let currentQuery = '';
     let currentPage = 1;
     let isLoading = false;
     let lastHasMore = false;
+    let marketStatusLoaded = false;
+    let isMarketStatusFetching = false;
 
     function render(items, append=false){
       if(!append){ grid.innerHTML=''; }
@@ -437,6 +471,41 @@
       loadingSpinner.style.display = 'none';
       isLoading = false;
       loadMoreBtn.style.display = lastHasMore ? 'inline-block' : 'none';
+    }
+
+    async function fetchMarketStatus() {
+        if (isMarketStatusFetching) return;
+        isMarketStatusFetching = true;
+        marketGrid.innerHTML = '<div class="spinner" style="display: block; margin: 20px auto;"></div>';
+        try {
+            const url = new URL('api/market-status', BASE_URL);
+            const response = await fetch(url);
+            if (!response.ok) {
+                marketGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">Could not load market status.</p>';
+                return;
+            }
+            const data = await response.json();
+            if (data && data.length) {
+                marketGrid.innerHTML = data.map(item => {
+                    let searchTerm = item.category;
+                    if (searchTerm.endsWith('s')) {
+                        searchTerm = searchTerm.slice(0, -1);
+                    }
+                    return `
+                    <a href="#" class="market-tag status-${item.status}" data-category="${searchTerm}">
+                        ${item.category} <span class="explanation">${item.explanation}</span>
+                    </a>`;
+                }).join('');
+            } else {
+                marketGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">No market status data available.</p>';
+            }
+            marketStatusLoaded = true;
+        } catch (e) {
+            console.error("Failed to fetch market status:", e);
+            marketGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">Error loading market status.</p>';
+        } finally {
+            isMarketStatusFetching = false;
+        }
     }
 
     async function fetchPage(page=1, append=false) {
@@ -494,6 +563,24 @@
     qInput.addEventListener('input', showSuggest);
     document.addEventListener('click', (e)=>{ if(!suggestBox.contains(e.target) && e.target!==qInput){ suggestBox.style.display='none'; } });
     suggestBox.addEventListener('click', (e)=>{ const item = e.target.closest('.sug-item'); if(!item) return; qInput.value = item.getAttribute('data-title') || qInput.value; suggestBox.style.display='none'; doSearchFromInput(); });
+
+    marketGrid.addEventListener('click', (e) => {
+        e.preventDefault();
+        const tag = e.target.closest('.market-tag');
+        if (tag && tag.dataset.category) {
+            qInput.value = tag.dataset.category;
+            doSearchFromInput();
+            window.scrollTo({ top: qInput.offsetTop - 20, behavior: 'smooth' });
+        }
+    });
+
+    toggleMarketStatusBtn.addEventListener('click', () => {
+        const isVisible = marketStatusContainer.style.display === 'block';
+        marketStatusContainer.style.display = isVisible ? 'none' : 'block';
+        if (!isVisible && !marketStatusLoaded) {
+            fetchMarketStatus();
+        }
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
       fetchPage(1, false);
