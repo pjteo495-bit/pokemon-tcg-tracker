@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sealed Products Prices - POKEGR</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --poke-blue: #2A75BB;
+            --poke-yellow: #FFCC00;
+            --bg: #0b1220;
+            --panel: #121a2b;
+            --card-bg: #16223a;
+            --text: #eaf1ff;
+            --muted: #a7b6d6;
+            --border: #23314c;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            background-image: linear-gradient(rgba(11, 18, 32, 0.85), rgba(11, 18, 32, 0.85)), url('https://cdn.midjourney.com/9fdabdd5-ee83-470f-b488-ecbf9f08ea8b/0_0.png');
+            background-size: cover;
+            background-attachment: fixed;
+        }
+        .wrap { max-width: 1200px; margin: 0 auto; padding: 22px 16px 42px; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2rem;
+        }
+        .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+        .poke-ball { width: 42px; height: 42px; }
+        .logo h1 { margin: 0; font-size: 28px; font-weight: 800; color: var(--text); }
+        .nav-buttons { display: flex; gap: 15px; align-items: center; }
+        .nav-btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 10px 20px; background: var(--poke-blue); color: white;
+            border-radius: 12px; text-decoration: none; font-weight: 700;
+            transition: all .2s ease;
+        }
+        .nav-btn:hover { background: #1b4f8e; transform: translateY(-2px); }
+        .search-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .search-container input {
+            width: 100%;
+            height: 52px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: #fff;
+            padding: 0 18px;
+            font-size: 16px;
+            outline: none;
+        }
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .product-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+        }
+        .product-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: contain;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .product-card h3 { font-weight: 700; margin-bottom: 5px; }
+        .product-card p { color: var(--muted); margin-bottom: 15px; }
+        .ebay-btn {
+            display: inline-block;
+            width: 100%;
+            padding: 10px;
+            background-color: #5a5a5a;
+            color: white;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        .ebay-btn:hover { background-color: #4a4a4a; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <header class="header">
+            <a href="/" class="logo">
+                <img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="Pokegr Logo" class="poke-ball">
+                <h1>POKEGR</h1>
+            </a>
+            <div class="nav-buttons">
+                <a href="/tcg-tracker" class="nav-btn">TCG Tracker</a>
+                <a href="/top100" class="nav-btn">Top 100</a>
+                <a href="/wallpapers" class="nav-btn">Wallpapers</a>
+                <a href="/sealed-products" class="nav-btn">Sealed Products Prices</a>
+            </div>
+        </header>
+
+        <h2 style="text-align: center; font-size: 2.5rem; font-weight: 800; margin-bottom: 30px;">Sealed Product Prices</h2>
+
+        <div class="search-container">
+            <input type="text" id="setSearch" placeholder="Search by Set Name...">
+            <input type="text" id="typeSearch" placeholder="Search by Item Type (e.g., Booster Box)...">
+        </div>
+
+        <div id="resultsGrid" class="results-grid">
+            <!-- Results will be injected here by JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        const setSearch = document.getElementById('setSearch');
+        const typeSearch = document.getElementById('typeSearch');
+        const resultsGrid = document.getElementById('resultsGrid');
+        let allProducts = [];
+
+        async function fetchProducts() {
+            try {
+                const response = await fetch('/api/sealed-products');
+                if (!response.ok) return;
+                allProducts = await response.json();
+                renderProducts();
+            } catch (error) {
+                console.error("Failed to load products:", error);
+            }
+        }
+
+        function renderProducts() {
+            const setQuery = setSearch.value.toLowerCase();
+            const typeQuery = typeSearch.value.toLowerCase();
+
+            const filteredProducts = allProducts.filter(product => {
+                const setName = (product.set_name || '').toLowerCase();
+                const itemType = (product.item_type || '').toLowerCase();
+                return setName.includes(setQuery) && itemType.includes(typeQuery);
+            });
+
+            resultsGrid.innerHTML = filteredProducts.map(product => {
+                const ebayQuery = encodeURIComponent(`${product.set_name} ${product.item_type}`);
+                return `
+                    <div class="product-card">
+                        <img src="${product.image_url}" alt="${product.set_name} ${product.item_type}">
+                        <h3>${product.set_name}</h3>
+                        <p>${product.item_type}</p>
+                        <p style="color: var(--poke-yellow); font-weight: 700; font-size: 1.2rem;">${product.price}</p>
+                        <a href="https://www.ebay.com/sch/i.html?_nkw=${ebayQuery}" target="_blank" rel="noopener noreferrer" class="ebay-btn">
+                            Check eBay
+                        </a>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        setSearch.addEventListener('input', renderProducts);
+        typeSearch.addEventListener('input', renderProducts);
+
+        document.addEventListener('DOMContentLoaded', fetchProducts);
+    </script>
+</body>
+</html>
