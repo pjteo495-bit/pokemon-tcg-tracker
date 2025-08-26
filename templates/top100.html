@@ -28,6 +28,8 @@
             background-color: var(--card-bg);
             border: 1px solid var(--border);
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            display: flex;
+            flex-direction: column;
         }
         .card:hover {
             transform: translateY(-5px);
@@ -147,9 +149,6 @@
 
         <div class="text-center mb-10">
             <h2 class="text-4xl md:text-5xl font-bold text-white">Top 100 Trending Pokémon Cards</h2>
-            <p class="text-lg font-semibold text-gray-300 mt-4">
-                Powered by <a href="https://www.pokemonwizard.com/" target="_blank" rel="noopener noreferrer" class="underline hover:text-poke-yellow">Pokemon Wizard</a>
-            </p>
         </div>
 
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
@@ -169,14 +168,14 @@
 
         <div id="card-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
             {% for card in cards %}
-            <a href="{{ card.product_url }}" target="_blank" rel="noopener noreferrer" class="card rounded-lg overflow-hidden shadow-lg block"
+            <div class="card rounded-lg overflow-hidden shadow-lg"
                data-name="{{ card.item_title|lower }}"
                data-price="{{ card.price|replace('$', '')|float }}"
                data-trend="{{ card.price_trend|float }}">
                 <div class="card-image-container p-4 flex justify-center items-center h-48">
                     <img class="max-h-full max-w-full object-contain" src="{{ card.image_url }}" alt="{{ card.item_title }}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'">
                 </div>
-                <div class="p-4">
+                <div class="p-4 flex flex-col flex-grow">
                     <h3 class="font-bold text-md text-white truncate" title="{{ card.item_title }}">{{ card.item_title }}</h3>
                     <p class="text-sm text-gray-400">{{ card.set_name }}</p>
                     <div class="flex justify-between items-center mt-4">
@@ -188,8 +187,12 @@
                             <p class="text-md font-semibold trend-down">▼ {{ "%.2f"|format(trend_val|abs) }}%</p>
                         {% endif %}
                     </div>
+                    <div class="mt-auto pt-4 flex gap-2">
+                        <a href="https://www.tcgplayer.com/search/pokemon/product?q={{ card.item_title|urlencode }}" target="_blank" rel="noopener noreferrer" class="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-2 rounded-lg text-sm">TCGplayer</a>
+                        <a href="https://www.ebay.com/sch/i.html?_nkw={{ card.item_title|urlencode }} Pokemon TCG" target="_blank" rel="noopener noreferrer" class="flex-1 text-center bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-2 rounded-lg text-sm">eBay</a>
+                    </div>
                 </div>
-            </a>
+            </div>
             {% else %}
             <p class="text-center text-red-400 col-span-full">
                 Could not find any card data. Make sure the scraper has run and the CSV file exists in the 'Top 100 trending' directory.
@@ -212,7 +215,7 @@
             cards.forEach(card => {
                 const name = card.dataset.name;
                 if (name && name.includes(searchTerm)) {
-                    card.style.display = 'block';
+                    card.style.display = 'flex';
                 } else if (name) {
                     card.style.display = 'none';
                 }
@@ -246,4 +249,3 @@
     </script>
 </body>
 </html>
-
