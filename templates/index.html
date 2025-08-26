@@ -95,7 +95,7 @@
   .status-yellow { background-color: rgba(255, 204, 0, 0.2); color: #FFCC00; }
   .market-tag .explanation { font-weight: 500; font-size: 12px; opacity: 0.8; margin-left: 4px; }
 
-  .toolbar{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;}
+  .toolbar{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap; margin-bottom: 24px;}
   .search{position:relative;flex:1;min-width:280px;max-width:720px}
   .search input{ width:100%;height:52px;border-radius:12px;border:1px solid var(--border);
     background:var(--panel); color:#fff; padding:0 18px; font-size:16px; outline:none; }
@@ -198,6 +198,20 @@
   <!-- ======================= -->
   <!-- == ITEM DETAIL VIEW  == -->
   <!-- ======================= -->
+  <div class="toolbar">
+    <div class="search">
+      <input id="q" type="text" placeholder="Search products and cards..." autocomplete="off"/>
+      <div id="suggest" class="suggest" aria-hidden="true"></div>
+    </div>
+    <button class="btn" id="btnSearch">Search</button>
+    <select id="sort" class="select">
+      <option value="bestsellers">Bestsellers</option>
+      <option value="price_asc">Price: Low to High</option>
+      <option value="price_desc">Price: High to Low</option>
+      <option value="alpha">Alphabetically</option>
+    </select>
+  </div>
+
   <div class="item-detail-container">
     <div class="item-image">
         <img src="{{ item.image_url }}" alt="{{ item.title }}" onerror="this.style.visibility='hidden'">
@@ -444,13 +458,36 @@
 
     document.addEventListener('DOMContentLoaded', initializeDetailPage);
 </script>
-{% else %}
+{% endif %}
+
 <script>
-    // --- SEARCH PAGE SCRIPT ---
-    const grid = document.getElementById('grid');
-    const sortSel = document.getElementById('sort');
+    // --- SEARCH SCRIPT (runs on both pages) ---
     const qInput = document.getElementById('q');
     const btnSearch = document.getElementById('btnSearch');
+
+    function doSearchFromInput(){
+      const query = qInput.value.trim();
+      if (!query) return;
+      // Redirect to the homepage with the search query
+      window.location.href = `${BASE_URL}?q=${encodeURIComponent(query)}`;
+    }
+
+    if (btnSearch && qInput) {
+        btnSearch.onclick = doSearchFromInput;
+        qInput.addEventListener('keydown', (e)=>{ 
+            if(e.key==='Enter'){ 
+                e.preventDefault(); 
+                doSearchFromInput(); 
+            } 
+        });
+    }
+</script>
+
+{% if item is not defined %}
+<script>
+    // --- SEARCH PAGE SCRIPT (only runs on the main page) ---
+    const grid = document.getElementById('grid');
+    const sortSel = document.getElementById('sort');
     const suggestBox = document.getElementById('suggest');
     const loadMoreBtn = document.getElementById('loadMore');
     const loadingSpinner = document.getElementById('loadingSpinner');
@@ -531,13 +568,6 @@
           isLoading = false;
       }
     }
-
-    function doSearchFromInput(){
-      currentQuery = qInput.value.trim();
-      currentPage = 1;
-      suggestBox.style.display='none';
-      fetchPage(1, false);
-    }
     
     async function showSuggest(){
       const q = qInput.value.trim();
@@ -559,19 +589,25 @@
     }
 
     loadMoreBtn.addEventListener('click', () => fetchPage(currentPage + 1, true));
-    btnSearch.onclick = doSearchFromInput;
-    qInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); doSearchFromInput(); } });
-    sortSel.onchange = () => { if (qInput.value.trim()) { doSearchFromInput(); } else { fetchPage(1, false); } };
+    sortSel.onchange = () => { currentQuery = qInput.value.trim(); fetchPage(1, false); };
     qInput.addEventListener('input', showSuggest);
     document.addEventListener('click', (e)=>{ if(!suggestBox.contains(e.target) && e.target!==qInput){ suggestBox.style.display='none'; } });
-    suggestBox.addEventListener('click', (e)=>{ const item = e.target.closest('.sug-item'); if(!item) return; qInput.value = item.getAttribute('data-title') || qInput.value; suggestBox.style.display='none'; doSearchFromInput(); });
+    suggestBox.addEventListener('click', (e)=>{ 
+        const item = e.target.closest('.sug-item'); 
+        if(!item) return; 
+        qInput.value = item.getAttribute('data-title') || qInput.value; 
+        suggestBox.style.display='none'; 
+        currentQuery = qInput.value.trim();
+        fetchPage(1, false);
+    });
 
     marketGrid.addEventListener('click', (e) => {
         e.preventDefault();
         const tag = e.target.closest('.market-tag');
         if (tag && tag.dataset.category) {
             qInput.value = tag.dataset.category;
-            doSearchFromInput();
+            currentQuery = qInput.value.trim();
+            fetchPage(1, false);
             window.scrollTo({ top: qInput.offsetTop - 20, behavior: 'smooth' });
         }
     });
@@ -585,6 +621,12 @@
     });
 
     document.addEventListener('DOMContentLoaded', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryFromUrl = urlParams.get('q');
+        if (queryFromUrl) {
+            qInput.value = queryFromUrl;
+            currentQuery = queryFromUrl;
+        }
       fetchPage(1, false);
     });
 </script>
