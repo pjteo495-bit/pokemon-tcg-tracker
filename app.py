@@ -10,6 +10,7 @@ import glob
 import pandas as pd
 from datetime import datetime, timedelta
 import pytz
+import random
 
 # --- Local Imports ---
 # Make sure scraper.py and scraper_pokemon.py are in the same directory
@@ -284,6 +285,38 @@ def api_tcg_related():
         count = 8
     items = scraper_pokemon.get_related_cards(set_id, rarity, card_id, count=count)
     return jsonify({"items": items})
+
+@app.route("/api/tcg/random-trending")
+def api_tcg_random_trending():
+    """Fetches 10 random cards from the top 100 list."""
+    trending_dir = "Top 100 trending"
+    latest_file = None
+    latest_time = 0
+    if os.path.isdir(trending_dir):
+        for item in os.listdir(trending_dir):
+            item_path = os.path.join(trending_dir, item)
+            if os.path.isdir(item_path):
+                try:
+                    csv_path = os.path.join(item_path, 'pokemon_wizard_prices.csv')
+                    if os.path.exists(csv_path):
+                        mtime = os.path.getmtime(csv_path)
+                        if mtime > latest_time:
+                            latest_time = mtime
+                            latest_file = csv_path
+                except Exception:
+                    continue
+    cards = []
+    if latest_file:
+        try:
+            with open(latest_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                cards = list(reader)
+        except Exception as e:
+            print(f"Error reading CSV file {latest_file}: {e}")
+    
+    if len(cards) > 10:
+        return jsonify(random.sample(cards, 10))
+    return jsonify(cards)
 
 
 if __name__ == "__main__":
