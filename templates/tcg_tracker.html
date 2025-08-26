@@ -261,7 +261,7 @@
     <div id="tcgSuggest" class="suggest"></div>
   </div>
 
-  <div class="random-cards-section">
+  <div id="randomCardsSection" class="random-cards-section">
     <h3 style="font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 20px; text-align: center;">Maybe looking for one of these?</h3>
     <div id="randomCardGrid" class="random-cards-grid"></div>
   </div>
@@ -275,6 +275,7 @@
   const tcgSuggest = document.getElementById('tcgSuggest');
   const tcgResults = document.getElementById('tcgResults');
   const randomCardGrid = document.getElementById('randomCardGrid');
+  const randomCardsSection = document.getElementById('randomCardsSection');
   let suggestController = null;
   const cardDetailCache = new Map();
 
@@ -407,6 +408,9 @@
   }
 
   async function handleLoadCard(cardId, cardName = '') {
+    if (randomCardsSection) {
+        randomCardsSection.style.display = 'none';
+    }
     tcgResults.style.display = 'block';
     tcgResults.innerHTML = '<div class="loading" id="loadingCard"><div class="loading-spinner"></div> Loading card details...</div>';
     let card = cardDetailCache.get(cardId);
@@ -466,6 +470,18 @@
   }, 250);
   
   tcgSearch.addEventListener('input', handleSearchInput);
+  tcgSearch.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const firstSuggestion = tcgSuggest.querySelector('.sug-item');
+        if (firstSuggestion && firstSuggestion.dataset.id) {
+            tcgSuggest.style.display = 'none';
+            tcgSearch.value = '';
+            handleLoadCard(firstSuggestion.dataset.id, firstSuggestion.dataset.name);
+        }
+    }
+  });
+
   tcgSuggest.addEventListener('click', (e) => {
     const item = e.target.closest('.sug-item');
     if (item && item.dataset.id) {
