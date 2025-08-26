@@ -256,14 +256,11 @@
 
 
 <script>
-  // Use the 'mode' variable from Flask/Jinja2 to determine which script to run
-  const PAGE_MODE = '{{ mode or "search" }}';
   const BASE_URL = '{{ base_url }}';
 
   // --- SHARED FUNCTIONS (used by both pages) ---
   function cardHTML(p) {
       const safeTitle = (p.title || '').replace(/"/g, '&quot;');
-      // Build the URL for the item detail page with all necessary info
       const itemParams = new URLSearchParams({
           title: p.title || '',
           price: p.price || '',
@@ -271,9 +268,7 @@
           url: p.url || '',
           source: p.source || ''
       }).toString();
-      
       const detailUrl = `${BASE_URL}item?${itemParams}`;
-
       return `
         <div class="card">
           <a class="imgwrap" href="${detailUrl}">
@@ -301,12 +296,12 @@
       const cutoff = new Date();
       cutoff.setMonth(now.getMonth() - months);
       const filtered = data.filter(d => new Date(d.date) >= cutoff);
-      if (months === 1) { // For 1 month, show daily data
+      if (months === 1) {
           return filtered.map(d => ({ x: d.date, y: d.price }));
-      } else { // For longer periods, average by month
+      } else {
           const monthly = {};
           filtered.forEach(d => {
-              const month = d.date.substring(0, 7); // e.g., "2023-08"
+              const month = d.date.substring(0, 7);
               if (!monthly[month]) {
                   monthly[month] = { sum: 0, count: 0 };
               }
@@ -321,7 +316,6 @@
   }
   
   function drawChart(canvasEl, data, timeframe) {
-      // Returns a new Chart.js instance
       return new Chart(canvasEl, {
           type: 'line',
           data: {
@@ -352,12 +346,11 @@
           }
       });
   }
+</script>
 
-  // --- PAGE-SPECIFIC LOGIC ---
-  if (PAGE_MODE === 'detail') {
+{% if mode == 'detail' %}
+<script>
     // --- ITEM DETAIL PAGE SCRIPT ---
-    // This block is only entered when the page is in 'detail' mode,
-    // so `item` will be defined by Jinja2.
     const currentItem = {
       title: {{ item.title | tojson }},
       url: {{ item.url | tojson }}
@@ -373,7 +366,6 @@
     let currentHistoryData = [];
 
     async function initializeDetailPage() {
-        // Fetch and render the price history chart
         try {
             currentHistoryData = await fetchHistory(currentItem.title);
             chartLoader.style.display = 'none';
@@ -390,7 +382,6 @@
             noHistoryMsg.style.display = 'block';
         }
 
-        // Fetch and render related items
         try {
             const params = new URLSearchParams({ title: currentItem.title, url: currentItem.url });
             const relatedUrl = new URL(`api/related-products?${params.toString()}`, BASE_URL);
@@ -409,21 +400,21 @@
         }
     }
 
-    // Add event listeners for the timeframe buttons (1M, 3M, etc.)
     timeframeBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             if (!currentHistoryData.length) return;
             timeframeBtns.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             const range = parseInt(btn.dataset.range, 10);
-            if (priceChart) priceChart.destroy(); // Clear old chart before drawing new one
+            if (priceChart) priceChart.destroy();
             priceChart = drawChart(chartCanvas, currentHistoryData, range);
         });
     });
 
     document.addEventListener('DOMContentLoaded', initializeDetailPage);
-
-  } else {
+</script>
+{% else %}
+<script>
     // --- SEARCH PAGE SCRIPT ---
     const grid = document.getElementById('grid');
     const sortSel = document.getElementById('sort');
@@ -466,7 +457,7 @@
           currentPage = page;
       } catch (e) {
           console.error("Fetch failed:", e);
-          isLoading = false; // Reset loading state on error
+          isLoading = false;
       }
     }
 
@@ -496,7 +487,6 @@
       }catch(e){ console.error(e); }
     }
 
-    // --- Event Listeners for Search Page ---
     loadMoreBtn.addEventListener('click', () => fetchPage(currentPage + 1, true));
     btnSearch.onclick = doSearchFromInput;
     qInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); doSearchFromInput(); } });
@@ -505,11 +495,11 @@
     document.addEventListener('click', (e)=>{ if(!suggestBox.contains(e.target) && e.target!==qInput){ suggestBox.style.display='none'; } });
     suggestBox.addEventListener('click', (e)=>{ const item = e.target.closest('.sug-item'); if(!item) return; qInput.value = item.getAttribute('data-title') || qInput.value; suggestBox.style.display='none'; doSearchFromInput(); });
 
-    // Initial page load
     document.addEventListener('DOMContentLoaded', () => {
       fetchPage(1, false);
     });
-  }
 </script>
+{% endif %}
+
 </body>
 </html>
