@@ -145,6 +145,9 @@
   }
   .item-info h2 { font-size: 28px; margin-top: 0; line-height: 1.3; }
   .item-info .price { font-size: 32px; color: var(--poke-yellow); font-weight: 800; margin: 10px 0; }
+  .price-trend-summary { margin-top: -5px; margin-bottom: 15px; font-size: 16px; color: var(--muted); }
+  .price-trend-summary .increase { color: var(--poke-green); }
+  .price-trend-summary .decrease { color: var(--poke-red); }
   .view-on-site-btn {
     display: inline-block; padding: 12px 24px; background: var(--poke-blue);
     color: white; border-radius: 12px; text-decoration: none; font-weight: 700;
@@ -219,6 +222,7 @@
     <div class="item-info">
         <h2>{{ item.title }}</h2>
         <div class="price">{{ item.price }}</div>
+        <div id="priceTrendSummary" class="price-trend-summary"></div>
         <p>Source: <span style="text-transform: capitalize;">{{ item.source }}</span></p>
         <a href="{{ item.url }}" target="_blank" rel="noopener" class="view-on-site-btn">
             View on {{ item.source | capitalize }} &nbsp;<i class="fas fa-external-link-alt"></i>
@@ -407,8 +411,41 @@
     const timeframeBtns = document.querySelectorAll('.timeframe-btn');
     const relatedGrid = document.getElementById('relatedGrid');
     const relatedLoader = document.getElementById('relatedLoader');
+    const priceTrendSummaryEl = document.getElementById('priceTrendSummary');
     let priceChart = null;
     let currentHistoryData = [];
+
+    function calculateAndDisplayTrend(data) {
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.setDate(now.getDate() - 30));
+        
+        const recentData = data.filter(d => new Date(d.date) >= thirtyDaysAgo);
+        if (recentData.length < 2) {
+            priceTrendSummaryEl.textContent = "Price has been stable recently.";
+            return;
+        }
+
+        const oldestEntry = recentData[0];
+        const latestEntry = recentData[recentData.length - 1];
+        
+        const oldestPrice = oldestEntry.price;
+        const latestPrice = latestEntry.price;
+        
+        const change = latestPrice - oldestPrice;
+        const percentChange = (change / oldestPrice) * 100;
+        
+        const oldestDate = new Date(oldestEntry.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+
+        let summaryText = '';
+        if (Math.abs(percentChange) < 2) {
+            summaryText = 'Overall, the price has shown stability.';
+        } else if (percentChange > 0) {
+            summaryText = `An <span class="increase">${percentChange.toFixed(1)}% increase</span> since ${oldestDate}.`;
+        } else {
+            summaryText = `A <span class="decrease">${Math.abs(percentChange).toFixed(1)}% decrease</span> since ${oldestDate}.`;
+        }
+        priceTrendSummaryEl.innerHTML = summaryText;
+    }
 
     async function initializeDetailPage() {
         try {
@@ -417,14 +454,16 @@
             if (currentHistoryData.length > 0) {
                 chartCanvas.style.display = 'block';
                 priceChart = drawChart(chartCanvas, currentHistoryData, 1);
+                calculateAndDisplayTrend(currentHistoryData);
             } else {
                 noHistoryMsg.style.display = 'block';
+                priceTrendSummaryEl.textContent = "No recent price data available.";
             }
         } catch (e) {
             console.error("Failed to load history", e);
             chartLoader.style.display = 'none';
             noHistoryMsg.textContent = 'Could not load price history.';
-            noHistoryMsg.style.display = 'block';
+            priceTrendSummaryEl.textContent = "Could not load price trend.";
         }
 
         try {
