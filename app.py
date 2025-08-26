@@ -63,10 +63,8 @@ def item_page():
 @app.route("/tcg-tracker")
 def tcg_tracker_page():
     """Renders the TCG Tracker page."""
-    # This route now correctly serves the main search page, which is index.html
-    tz = pytz.timezone('Europe/Athens')
-    current_date = datetime.now(tz).strftime("%d %B %Y")
-    return render_template("index.html", base_url=request.url_root, current_date=current_date)
+    # This route now correctly serves the tcg_tracker.html template
+    return render_template("tcg_tracker.html")
 
 @app.route("/wallpapers")
 def wallpapers_page():
