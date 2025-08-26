@@ -180,7 +180,7 @@
     </div>
   </header>
 
-  {% if mode == 'detail' %}
+  {% if item is defined %}
 
   <!-- ======================= -->
   <!-- == ITEM DETAIL VIEW  == -->
@@ -348,7 +348,7 @@
   }
 </script>
 
-{% if mode == 'detail' %}
+{% if item is defined %}
 <script>
     // --- ITEM DETAIL PAGE SCRIPT ---
     const currentItem = {
