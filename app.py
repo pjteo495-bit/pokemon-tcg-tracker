@@ -171,8 +171,8 @@ def api_related_products():
     if not title:
         return jsonify({"items": []})
     
-    # Calls the new function in scraper.py
-    items = scraper.get_related_products(title, original_url, limit=6)
+    # Calls the new function in scraper.py, fetching 8 items
+    items = scraper.get_related_products(title, original_url, limit=8)
     return jsonify({"items": items})
 
 @app.route("/api/home")
