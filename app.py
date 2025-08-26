@@ -64,7 +64,8 @@ def item_page():
 def tcg_tracker_page():
     """Renders the TCG Tracker page."""
     # This route now correctly serves the tcg_tracker.html template
-    return render_template("tcg_tracker.html")
+    # and passes the necessary base_url for API calls.
+    return render_template("tcg_tracker.html", base_url=request.url_root)
 
 @app.route("/wallpapers")
 def wallpapers_page():
