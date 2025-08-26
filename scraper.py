@@ -6,7 +6,7 @@ from urllib.parse import urlparse, unquote
 
 try:
     import pandas as pd  # optional; works without it
-except Exception:
+except ImportError:
     pd = None
 
 # ---------- Config ----------
@@ -27,6 +27,7 @@ _LOCK = threading.Lock()
 
 # ---------- Helpers ----------
 def _find_latest_file(dirname: str):
+    """Finds the most recently modified Excel or CSV file in a directory."""
     if not dirname or not os.path.isdir(dirname):
         return None
     best, best_m = None, -1
@@ -43,9 +44,11 @@ def _find_latest_file(dirname: str):
     return best
 
 def _chosen_path():
+    """Determines which data file to load."""
     return EXCEL_FILE if (EXCEL_FILE and os.path.isfile(EXCEL_FILE)) else _find_latest_file(EXCEL_DIR)
 
 def _price_text_to_float(val):
+    """Converts a formatted price string (e.g., '€1.234,56') to a float."""
     if val is None:
         return None
     s = str(val).replace(".", "").replace(",", ".")
@@ -54,20 +57,22 @@ def _price_text_to_float(val):
         return None
     try:
         return float(digits)
-    except Exception:
+    except (ValueError, TypeError):
         return None
 
 def _format_price_text(v):
+    """Formats a float into a standard EU-style price string."""
     if v is None:
         return ""
     try:
         f = float(v)
         # EU-style comma decimal
         return f"€{f:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except Exception:
+    except (ValueError, TypeError):
         return str(v)
 
 def _pick(row, *cands):
+    """Finds the first matching key in a dictionary from a list of candidates."""
     for c in cands:
         for k in row.keys():
             if str(k).strip().lower() == str(c).strip().lower():
@@ -75,6 +80,7 @@ def _pick(row, *cands):
     return None
 
 def _infer_source(url, fallback="bestprice"):
+    """Determines the product source (e.g., 'skroutz') from its URL."""
     try:
         host = urlparse(url).netloc.lower()
     except Exception:
@@ -87,13 +93,14 @@ def _infer_source(url, fallback="bestprice"):
 
 _TITLE_RE = re.compile(r"\s+", re.UNICODE)
 def _norm_title(t: str) -> str:
+    """Normalizes a title for consistent matching."""
     s = (t or "")
     s = s.replace("™", "").replace("®", "")
     s = _TITLE_RE.sub(" ", s).strip().casefold()
     return s
 
 def _canon_url(u: str) -> str:
-    """host + decoded path, lowercase, no query/fragment — kills tracking params."""
+    """Creates a canonical URL (host + path) to help with deduplication."""
     if not u:
         return ""
     try:
@@ -106,6 +113,7 @@ def _canon_url(u: str) -> str:
     return f"{host}{path}"
 
 def _normalize_row(row, default_source="bestprice"):
+    """Converts a raw row from a file into a standardized dictionary."""
     title_k = _pick(row, "title", "product", "name", "item_title")
     price_k = _pick(row, "price", "current_price", "amount", "lowest_price")
     img_k   = _pick(row, "image_url", "image", "img", "thumbnail")
@@ -141,6 +149,7 @@ def _normalize_row(row, default_source="bestprice"):
     }
 
 def _read_rows(path: str):
+    """Reads rows from an Excel or CSV file."""
     ext = os.path.splitext(path)[1].lower()
     rows = []
     if pd and ext in (".xlsx", ".xls"):
@@ -163,6 +172,7 @@ def _read_rows(path: str):
     return rows
 
 def _load_items_from_file(path: str):
+    """Loads, normalizes, and optionally de-duplicates items from a file."""
     rows = _read_rows(path)
     items = []
     dropped_no_title = dropped_no_url = 0
@@ -182,7 +192,6 @@ def _load_items_from_file(path: str):
         seen = set()
         deduped = []
         for it in items:
-            # --- FIX: Deduplication key now includes title, url, AND price ---
             key = (it["_k_title"], it["_k_url"], it["price"])
             if key in seen:
                 continue
@@ -190,42 +199,34 @@ def _load_items_from_file(path: str):
             it.pop("_k_title", None)
             it.pop("_k_url", None)
             deduped.append(it)
-        bp = sum(1 for i in deduped if i["source"] == "bestprice")
-        sk = sum(1 for i in deduped if i["source"] == "skroutz")
-        print(f"[excel] DEBUG rows_read={len(rows)} normalized={len(items)} deduped={len(deduped)} "
-              f"dropped_title={dropped_no_title} dropped_url={dropped_no_url} (bestprice={bp}, skroutz={sk}) from: {path}")
+        print(f"[excel] DEBUG loaded {len(deduped)} items from: {path}")
         return deduped
 
-    # no dedup
     for it in items:
         it.pop("_k_title", None)
         it.pop("_k_url", None)
-    bp = sum(1 for i in items if i["source"] == "bestprice")
-    sk = sum(1 for i in items if i["source"] == "skroutz")
-    print(f"[excel] DEBUG rows_read={len(rows)} normalized={len(items)} dropped_title={dropped_no_title} dropped_url={dropped_no_url} "
-          f"(bestprice={bp}, skroutz={sk}) from: {path}")
+    print(f"[excel] DEBUG loaded {len(items)} items (no dedup) from: {path}")
     return items
 
 def _ensure_loaded():
+    """Ensures the item data is loaded into memory, reloading if the file has changed."""
     global _ITEMS, _LAST_PATH, _LAST_MTIME
     with _LOCK:
         path = _chosen_path()
         if not path or not os.path.isfile(path):
-            print("[excel] No file found. Set GREEK_PRICES_FILE or GREEK_PRICES_DIR.")
+            print("[excel] No data file found. Set GREEK_PRICES_FILE or GREEK_PRICES_DIR.")
             return
         try:
             mtime = os.path.getmtime(path)
         except Exception:
             mtime = 0.0
         if path != _LAST_PATH or mtime > _LAST_MTIME:
-            items = _load_items_from_file(path)
-            _ITEMS = items
+            _ITEMS = _load_items_from_file(path)
             _LAST_PATH, _LAST_MTIME = path, mtime
-            bp = sum(1 for i in items if i["source"] == "bestprice")
-            sk = sum(1 for i in items if i["source"] == "skroutz")
-            print(f"[excel] Loaded {len(items)} items (bestprice={bp}, skroutz={sk}) from: {path}")
+            print(f"[excel] Loaded {len(_ITEMS)} items from: {path}")
 
 def _filter_sort(items, search_term="", sort="bestsellers"):
+    """Filters items by a search term and applies sorting."""
     q = (search_term or "").casefold().strip()
     toks = [t for t in q.split() if t]
 
@@ -246,26 +247,47 @@ def _filter_sort(items, search_term="", sort="bestsellers"):
     return out
 
 # ---------- Public API used by app.py ----------
-def get_bestprice_bestsellers(sort="bestsellers"):
-    _ensure_loaded()
-    base = [it for it in _ITEMS if it["source"] == "bestprice"]
-    return _filter_sort(base, sort=sort)
-
-def search_products_bestprice(q, sort="bestsellers"):
-    _ensure_loaded()
-    base = [it for it in _ITEMS if it["source"] == "bestprice"]
-    return _filter_sort(base, search_term=q, sort=sort)
-
-def search_products_skroutz(q, sort="bestsellers"):
-    _ensure_loaded()
-    base = [it for it in _ITEMS if it["source"] == "skroutz"]
-    return _filter_sort(base, search_term=q, sort=sort)
-
 def search_products_all(q, sort="bestsellers"):
+    """Searches all loaded products."""
     _ensure_loaded()
     return _filter_sort(list(_ITEMS), search_term=q, sort=sort)
 
 def suggest_titles(q, limit=10):
+    """Provides title suggestions for search."""
     _ensure_loaded()
     items = _filter_sort(list(_ITEMS), search_term=q, sort="alpha")
     return items[:limit]
+
+def get_related_products(title, original_url, limit=6):
+    """Finds items with titles similar to the given one."""
+    _ensure_loaded()
+    
+    q = (title or "").casefold().strip()
+    # Use significant words (more than 3 chars) for matching
+    toks = {t for t in q.split() if len(t) > 3}
+    
+    if not toks:
+        return []
+
+    canon_original_url = _canon_url(original_url)
+
+    def score_item(it):
+        if not it or not it.get("title"): return 0
+        # Exclude the exact same item by comparing canonical URLs
+        if _canon_url(it.get("url", "")) == canon_original_url: return 0
+            
+        item_title = (it["title"] or "").casefold()
+        # Score is the number of matching keywords
+        score = sum(1 for t in toks if t in item_title)
+        return score
+
+    # Score all items in the inventory
+    scored_items = [(score_item(it), it) for it in _ITEMS]
+    
+    # Sort by score in descending order
+    scored_items.sort(key=lambda x: x[0], reverse=True)
+    
+    # Filter for items that have a score greater than 0
+    related = [item for score, item in scored_items if score > 0]
+    
+    return related[:limit]
