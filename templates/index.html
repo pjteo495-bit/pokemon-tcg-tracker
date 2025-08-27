@@ -444,103 +444,135 @@
     let priceChart = null;
     let currentHistoryData = [];
 
-    // ----- GLOBAL vs GREEK COMPARISON -----
     const TYPE_SYNONYMS = {
-      "boosterpack": ["boosterpack", "pack"],
-      "boosterbox": ["boosterbox", "box", "display"],
-      "elitetrainerbox": ["elitetrainerbox", "etb"],
-      "boosterbundle": ["boosterbundle", "bundle"],
-      "blister": ["blister"],
-      "collection": ["collection"],
-      "tin": ["tin"],
-      "deck": ["deck"],
-      "sleeves": ["sleeves"],
-      "binder": ["binder"]
-    };
-    const GENERIC_STOPWORDS = new Set([
-      "pokemon","tcg","sealed","english","greek","official","new","factory","original",
-      "the","a","an","box","pack","booster","trading","card","cards","set"
-    ]);
-    function normalize(str) {
-      return (str || '').toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+    "boosterpack": ["boosterpack", "pack"],
+    "boosterbox": ["boosterbox", "box", "display"],
+    "elitetrainerbox": ["elitetrainerbox", "etb"],
+    "boosterbundle": ["boosterbundle", "bundle"],
+    "blister": ["blister"],
+    "collection": ["collection"],
+    "tin": ["tin"],
+    "deck": ["deck"],
+    "sleeves": ["sleeves"],
+    "binder": ["binder"]
+  };
+
+  // common words we don't want to match on
+  const GENERIC_STOPWORDS = new Set([
+    "pokemon","pokémon","tcg","sealed","official","english","greek",
+    "new","factory","original","trading","card","cards","the","a","an"
+  ]);
+
+  function normalize(str) {
+    return (str || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g,' ')     // keep only letters/numbers/spaces
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+
+  // Base tokenizer
+  function tokens(str) {
+    return normalize(str)
+      .split(' ')
+      .filter(Boolean)
+      .filter(t => !GENERIC_STOPWORDS.has(t));
+  }
+
+  // Strong tokens: ignore pure numbers and SKUs like POK113664, keep meaningful words
+  function coreTokens(str) {
+    return tokens(str).filter(t =>
+      t.length >= 3 &&
+      !/^\d+$/.test(t) &&           // pure numbers
+      !/^pok\d+$/i.test(t)          // SKUs like POK113664
+    );
+  }
+
+  function detectType(str) {
+    const n = normalize(str).replace(/\s/g,'');
+    for (const [key, vars] of Object.entries(TYPE_SYNONYMS)) {
+      if (vars.some(v => n.includes(v))) return key;
     }
-    function tokens(str) {
-      return normalize(str).split(' ').filter(t => t && !GENERIC_STOPWORDS.has(t));
-    }
-    function detectType(str) {
-      const n = normalize(str).replace(/\s/g,'');
-      for (const [typeKey, variants] of Object.entries(TYPE_SYNONYMS)) {
-        if (variants.some(v => n.includes(v))) return typeKey;
-      }
-      return null;
-    }
-    function jaccard(a, b) {
-      const A = new Set(a), B = new Set(b);
-      const inter = new Set([...A].filter(x => B.has(x)));
-      const union = new Set([...A, ...B]);
-      return union.size ? inter.size / union.size : 0;
-    }
-    function parseEuro(s) {
-      if (!s) return null;
-      const m = String(s).match(/[\d.,]+/);
-      if (!m) return null;
-      let v = m[0];
-      // Handle Greek "1.234,56" or "1234,56"
-      if (v.indexOf(',') > -1 && v.indexOf('.') > -1) {
-        v = v.replace(/\./g, '').replace(',', '.');
-      } else if (v.indexOf(',') > -1) {
-        v = v.replace(',', '.');
-      }
-      return parseFloat(v);
-    }
+    return null;
+  }
+
+  function jaccard(a, b) {
+    const A = new Set(a), B = new Set(b);
+    const inter = new Set([...A].filter(x => B.has(x)));
+    const union = new Set([...A, ...B]);
+    return union.size ? inter.size / union.size : 0;
+  }
+
+  function parseEuro(s) {
+    if (!s) return null;
+    const m = String(s).match(/[\d.,]+/);
+    if (!m) return null;
+    let v = m[0];
+    if (v.includes(',') && v.includes('.')) v = v.replace(/\./g,'').replace(',', '.');
+    else if (v.includes(',')) v = v.replace(',', '.');
+    return parseFloat(v);
+  }
 
     async function compareWithGlobal() {
-      try {
-        const r = await fetch(new URL('api/sealed-products', BASE_URL));
-        if (!r.ok) return;
-        const globalItems = await r.json();
-        const greekTitle = currentItem.title || '';
-        const greekType = detectType(greekTitle);
-        const greekTokens = tokens(greekTitle);
+    try {
+      const r = await fetch(new URL('api/sealed-products', BASE_URL));
+      if (!r.ok) return;
+      const globalItems = await r.json();
 
-        // Bail if we can't detect a type (prevents mismatched comparisons).
-        if (!greekType) return;
+      const greekTitle = currentItem.title || '';
+      const greekType  = detectType(greekTitle);
+      const greekCore  = coreTokens(greekTitle);
 
-        // Score each global item by: same type + token similarity
-        let best = null;
-        let bestScore = 0;
-        for (const gi of globalItems) {
-          const title = gi.item_title || '';
-          const setName = gi.set_name || '';
-          const allText = `${title} ${setName}`.trim();
-          const giType = detectType(allText);
-          if (giType !== greekType) continue; // types must match exactly via synonym map
+      // Must know the product type and have a couple of meaningful tokens
+      if (!greekType || greekCore.length < 2) return;
 
-          const score = jaccard(greekTokens, tokens(allText));
-          if (score > bestScore) {
-            bestScore = score;
-            best = gi;
-          }
+      let best = null;
+      let bestScore = 0;
+      let bestStrongOverlap = 0;
+
+      for (const gi of globalItems) {
+        const allText = `${gi.item_title || ''} ${gi.set_name || ''}`.trim();
+        const giType  = detectType(allText);
+        if (giType !== greekType) continue; // ensure same product type
+
+        const globalCore = coreTokens(allText);
+        if (!globalCore.length) continue;
+
+        const score = jaccard(greekCore, globalCore);
+        const inter = greekCore.filter(t => globalCore.includes(t));
+        const strongOverlap = inter.filter(t => t.length >= 5).length;
+
+        // choose the match with the highest score; break ties by stronger overlap
+        if (score > bestScore || (score === bestScore && strongOverlap > bestStrongOverlap)) {
+          best = gi;
+          bestScore = score;
+          bestStrongOverlap = strongOverlap;
         }
-
-        // Threshold: require good keyword overlap
-        if (!best || bestScore < 0.55) return;
-
-        const greekPrice = parseEuro(currentItem.price);
-        const globalPrice = parseFloat(best.price_eur || best.price_usd) || parseEuro(best.raw_price);
-        if (!greekPrice || !globalPrice || globalPrice <= 0) return;
-
-        const diffPct = ((greekPrice - globalPrice) / globalPrice) * 100;
-        const absPct = Math.abs(diffPct).toFixed(1);
-        const direction = diffPct >= 0 ? 'higher' : 'lower';
-        const cls = diffPct >= 0 ? 'higher' : 'lower';
-
-        globalCompareEl.innerHTML = `<span class="${cls}">${absPct}% ${direction}</span> than the average global market price.`;
-        globalCompareEl.style.display = 'block';
-      } catch (e) {
-        console.warn('Global compare failed', e);
       }
+
+      // Accept if similarity is good OR we share at least 2 strong words and 3 total overlaps.
+      if (!best) return;
+      const globalCoreBest = coreTokens(`${best.item_title || ''} ${best.set_name || ''}`);
+      const inter = greekCore.filter(t => globalCoreBest.includes(t));
+      const strongInter = inter.filter(t => t.length >= 5);
+      const accept = (bestScore >= 0.45) || (strongInter.length >= 2 && inter.length >= 3);
+      if (!accept) return;
+
+      const greekPrice  = parseEuro(currentItem.price);
+      const globalPrice = parseFloat(best.price_eur || best.price_usd) || parseEuro(best.raw_price);
+      if (!greekPrice || !globalPrice || globalPrice <= 0) return;
+
+      const diffPct = ((greekPrice - globalPrice) / globalPrice) * 100;
+      const absPct  = Math.abs(diffPct).toFixed(1);
+      const direction = diffPct >= 0 ? 'higher' : 'lower';
+      const cls = diffPct >= 0 ? 'higher' : 'lower';
+
+      globalCompareEl.innerHTML = `<span class="${cls}">${absPct}% ${direction}</span> than the average global market price.`;
+      globalCompareEl.style.display = 'block';
+    } catch (e) {
+      console.warn('Global compare failed', e);
     }
+  }
 
     // ----- 30-day trend for Greek history -----
   function calculateAndDisplayTrend(data) {
