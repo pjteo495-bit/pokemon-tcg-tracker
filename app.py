@@ -169,7 +169,7 @@ def top_100_page():
             print(f"Error reading CSV file {latest_file}: {e}")
     return render_template("top100.html", cards=cards)
 
-@app.route("/sealed-products")
+@app.route("/global-prices")
 def sealed_products_page():
     return render_template("sealed_products.html")
 
