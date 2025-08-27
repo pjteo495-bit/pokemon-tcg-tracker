@@ -25,8 +25,8 @@
             font-family: 'Poppins', sans-serif;
             background-color: var(--bg);
             color: var(--text);
-            overflow-x: hidden;
         }
+        main.page-content { overflow-x: hidden; }
         .header {
             display: flex;
             justify-content: space-between;
@@ -82,6 +82,7 @@
             font-size: 18px; padding: 15px 0; border-bottom: 1px solid var(--border);
         }
         .mobile-nav a i { margin-right: 10px; }
+        .header-spacer { display: none; }
 
         @media (max-width: 768px) {
             .nav-buttons { display: none; }
@@ -89,9 +90,15 @@
                 display: block;
                 background: none; border: none; color: var(--text);
                 font-size: 24px; cursor: pointer;
+                flex: 0 0 40px;
+                text-align: left;
+                padding: 0;
             }
             .header { justify-content: space-between; width: 100%; }
-            .logo { flex-grow: 1; }
+            .header-spacer {
+                display: block;
+                flex: 0 0 40px;
+            }
         }
     </style>
 </head>
@@ -103,66 +110,68 @@
         <a href="/wallpapers"><i class="fas fa-image"></i> Wallpapers</a>
         <a href="/global-prices"><i class="fas fa-globe"></i> Global Prices</a>
     </div>
-
-    <div class="container mx-auto px-4 py-8">
-        <header class="header">
-            <button class="mobile-nav-toggle" id="mobileNavOpen"><i class="fas fa-bars"></i></button>
-            <a href="/" class="logo">
-                <img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="Pokegr Logo" class="poke-ball" width="42" height="42">
-                <h1>POKEGR</h1>
-            </a>
-            <div class="nav-buttons">
-                <a href="/" class="nav-btn"><i class="fas fa-store"></i> <span>Marketplace</span></a>
-                <a href="/tcg-tracker" class="nav-btn"><i class="fas fa-search"></i> <span>TCG Tracker</span></a>
-                <a href="/top100" class="nav-btn"><i class="fas fa-fire"></i> <span>Top 100</span></a>
-                <a href="/wallpapers" class="nav-btn"><i class="fas fa-image"></i> <span>Wallpapers</span></a>
-                <a href="/global-prices" class="nav-btn"><i class="fas fa-globe"></i> <span>Global Prices</span></a>
-            </div>
-        </header>
-
-        <!-- Sticky Navigation for Wallpaper Sections -->
-        <div class="sticky top-0 z-40 py-3 bg-panel/80 backdrop-blur-lg border-b border-border -mx-4 px-4 mb-8">
-            <div class="container mx-auto flex justify-center gap-6 sm:gap-8">
-                <a href="#pc-wallpapers" class="font-bold text-lg text-muted hover:text-poke-yellow transition-colors duration-200 flex items-center gap-2">
-                    <i class="fas fa-desktop"></i>
-                    <span class="hidden sm:inline">PC Wallpapers</span>
+    <main class="page-content">
+        <div class="container mx-auto px-4 py-8">
+            <header class="header">
+                <button class="mobile-nav-toggle" id="mobileNavOpen"><i class="fas fa-bars"></i></button>
+                <a href="/" class="logo">
+                    <img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="Pokegr Logo" class="poke-ball" width="42" height="42">
+                    <h1>POKEGR</h1>
                 </a>
-                <a href="#mobile-wallpapers" class="font-bold text-lg text-muted hover:text-poke-yellow transition-colors duration-200 flex items-center gap-2">
-                    <i class="fas fa-mobile-alt"></i>
-                    <span class="hidden sm:inline">Mobile Wallpapers</span>
-                </a>
+                <div class="header-spacer"></div>
+                <div class="nav-buttons">
+                    <a href="/" class="nav-btn"><i class="fas fa-store"></i> <span>Marketplace</span></a>
+                    <a href="/tcg-tracker" class="nav-btn"><i class="fas fa-search"></i> <span>TCG Tracker</span></a>
+                    <a href="/top100" class="nav-btn"><i class="fas fa-fire"></i> <span>Top 100</span></a>
+                    <a href="/wallpapers" class="nav-btn"><i class="fas fa-image"></i> <span>Wallpapers</span></a>
+                    <a href="/global-prices" class="nav-btn"><i class="fas fa-globe"></i> <span>Global Prices</span></a>
+                </div>
+            </header>
+
+            <!-- Sticky Navigation for Wallpaper Sections -->
+            <div class="sticky top-0 z-40 py-3 bg-panel/80 backdrop-blur-lg border-b border-border -mx-4 px-4 mb-8">
+                <div class="container mx-auto flex justify-center gap-6 sm:gap-8">
+                    <a href="#pc-wallpapers" class="font-bold text-lg text-muted hover:text-poke-yellow transition-colors duration-200 flex items-center gap-2">
+                        <i class="fas fa-desktop"></i>
+                        <span class="hidden sm:inline">PC Wallpapers</span>
+                    </a>
+                    <a href="#mobile-wallpapers" class="font-bold text-lg text-muted hover:text-poke-yellow transition-colors duration-200 flex items-center gap-2">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span class="hidden sm:inline">Mobile Wallpapers</span>
+                    </a>
+                </div>
             </div>
+
+            <div class="text-center mb-10">
+                <h2 class="text-4xl md:text-5xl font-bold text-white">Download Pokémon Wallpapers</h2>
+                <p class="text-lg text-gray-400 mt-2">High-quality wallpapers for your devices.</p>
+                <p class="text-base text-gray-300 mt-4 font-semibold">
+                    Powered by <a href="https://www.instagram.com/bflyzone/" target="_blank" rel="noopener noreferrer" class="underline hover:text-poke-yellow">Bflyzone</a>
+                </p>
+            </div>
+
+            <!-- PC Wallpapers Section -->
+            <section id="pc-wallpapers" class="mb-24">
+                <h3 class="text-3xl font-bold text-white mb-6 border-l-4 border-poke-yellow pl-4">PC Wallpapers</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg"><img class="w-full h-48 object-cover" src="https://cdn.midjourney.com/6790afc1-ebd7-48b4-bff0-3ff2d30f8d6f/0_0.png" alt="PC Wallpaper 1"><div class="p-4 text-center"><a href="https://cdn.midjourney.com/6790afc1-ebd7-48b4-bff0-3ff2d30f8d6f/0_0.png" download="pokegr_wallpaper_1.png" class="download-btn py-2 px-4 rounded-lg font-semibold inline-block"><i class="fas fa-download mr-2"></i>Download</a></div></div>
+                    <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg"><img class="w-full h-48 object-cover" src="https://cdn.midjourney.com/039d8da0-fac1-44d8-8af4-e95429fd3855/0_0.png" alt="PC Wallpaper 2"><div class="p-4 text-center"><a href="https://cdn.midjourney.com/039d8da0-fac1-44d8-8af4-e95429fd3855/0_0.png" download="pokegr_wallpaper_2.png" class="download-btn py-2 px-4 rounded-lg font-semibold inline-block"><i class="fas fa-download mr-2"></i>Download</a></div></div>
+                    <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg"><img class="w-full h-48 object-cover" src="https://cdn.midjourney.com/3cc968bd-53f6-49f9-9746-0cd848b13091/0_0.png" alt="PC Wallpaper 3"><div class="p-4 text-center"><a href="https://cdn.midjourney.com/3cc968bd-53f6-49f9-9746-0cd848b13091/0_0.png" download="pokegr_wallpaper_3.png" class="download-btn py-2 px-4 rounded-lg font-semibold inline-block"><i class="fas fa-download mr-2"></i>Download</a></div></div>
+                    <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg"><img class="w-full h-48 object-cover" src="https://cdn.midjourney.com/587cd27e-f58b-40f8-a78e-945048856c4e/0_0.png" alt="PC Wallpaper 4"><div class="p-4 text-center"><a href="https://cdn.midjourney.com/587cd27e-f58b-40f8-a78e-945048856c4e/0_0.png" download="pokegr_wallpaper_4.png" class="download-btn py-2 px-4 rounded-lg font-semibold inline-block"><i class="fas fa-download mr-2"></i>Download</a></div></div>
+                </div>
+            </section>
+
+            <!-- Mobile Wallpapers Section -->
+            <section id="mobile-wallpapers">
+                <h3 class="text-3xl font-bold text-white mb-6 border-l-4 border-poke-blue pl-4">Mobile Wallpapers</h3>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                    <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg"><img class="w-full h-64 object-cover" src="https://placehold.co/1080x1920/0b1220/eaf1ff?text=Mobile+1" alt="Mobile Wallpaper 1"><div class="p-4 text-center"><a href="https://placehold.co/1080x1920" download="eevee_mobile.png" class="download-btn py-2 px-4 rounded-lg font-semibold w-full block"><i class="fas fa-download mr-2"></i>Download</a></div></div>
+                    <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg"><img class="w-full h-64 object-cover" src="https://placehold.co/1080x1920/121a2b/eaf1ff?text=Mobile+2" alt="Mobile Wallpaper 2"><div class="p-4 text-center"><a href="https://placehold.co/1080x1920" download="snorlax_mobile.png" class="download-btn py-2 px-4 rounded-lg font-semibold w-full block"><i class="fas fa-download mr-2"></i>Download</a></div></div>
+                    <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg"><img class="w-full h-64 object-cover" src="https://placehold.co/1080x1920/16223a/eaf1ff?text=Mobile+3" alt="Mobile Wallpaper 3"><div class="p-4 text-center"><a href="https://placehold.co/1080x1920" download="mewtwo_mobile.png" class="download-btn py-2 px-4 rounded-lg font-semibold w-full block"><i class="fas fa-download mr-2"></i>Download</a></div></div>
+                </div>
+            </section>
         </div>
-
-        <div class="text-center mb-10">
-            <h2 class="text-4xl md:text-5xl font-bold text-white">Download Pokémon Wallpapers</h2>
-            <p class="text-lg text-gray-400 mt-2">High-quality wallpapers for your devices.</p>
-            <p class="text-base text-gray-300 mt-4 font-semibold">
-                Powered by <a href="https://www.instagram.com/bflyzone/" target="_blank" rel="noopener noreferrer" class="underline hover:text-poke-yellow">Bflyzone</a>
-            </p>
-        </div>
-
-        <!-- PC Wallpapers Section -->
-        <section id="pc-wallpapers" class="mb-24">
-            <h3 class="text-3xl font-bold text-white mb-6 border-l-4 border-poke-yellow pl-4">PC Wallpapers</h3>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg"><img class="w-full h-48 object-cover" src="https://cdn.midjourney.com/6790afc1-ebd7-48b4-bff0-3ff2d30f8d6f/0_0.png" alt="PC Wallpaper 1"><div class="p-4 text-center"><a href="https://cdn.midjourney.com/6790afc1-ebd7-48b4-bff0-3ff2d30f8d6f/0_0.png" download="pokegr_wallpaper_1.png" class="download-btn py-2 px-4 rounded-lg font-semibold inline-block"><i class="fas fa-download mr-2"></i>Download</a></div></div>
-                <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg"><img class="w-full h-48 object-cover" src="https://cdn.midjourney.com/039d8da0-fac1-44d8-8af4-e95429fd3855/0_0.png" alt="PC Wallpaper 2"><div class="p-4 text-center"><a href="https://cdn.midjourney.com/039d8da0-fac1-44d8-8af4-e95429fd3855/0_0.png" download="pokegr_wallpaper_2.png" class="download-btn py-2 px-4 rounded-lg font-semibold inline-block"><i class="fas fa-download mr-2"></i>Download</a></div></div>
-                <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg"><img class="w-full h-48 object-cover" src="https://cdn.midjourney.com/3cc968bd-53f6-49f9-9746-0cd848b13091/0_0.png" alt="PC Wallpaper 3"><div class="p-4 text-center"><a href="https://cdn.midjourney.com/3cc968bd-53f6-49f9-9746-0cd848b13091/0_0.png" download="pokegr_wallpaper_3.png" class="download-btn py-2 px-4 rounded-lg font-semibold inline-block"><i class="fas fa-download mr-2"></i>Download</a></div></div>
-                <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg"><img class="w-full h-48 object-cover" src="https://cdn.midjourney.com/587cd27e-f58b-40f8-a78e-945048856c4e/0_0.png" alt="PC Wallpaper 4"><div class="p-4 text-center"><a href="https://cdn.midjourney.com/587cd27e-f58b-40f8-a78e-945048856c4e/0_0.png" download="pokegr_wallpaper_4.png" class="download-btn py-2 px-4 rounded-lg font-semibold inline-block"><i class="fas fa-download mr-2"></i>Download</a></div></div>
-            </div>
-        </section>
-
-        <!-- Mobile Wallpapers Section -->
-        <section id="mobile-wallpapers">
-            <h3 class="text-3xl font-bold text-white mb-6 border-l-4 border-poke-blue pl-4">Mobile Wallpapers</h3>
-            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg"><img class="w-full h-64 object-cover" src="https://placehold.co/1080x1920/0b1220/eaf1ff?text=Mobile+1" alt="Mobile Wallpaper 1"><div class="p-4 text-center"><a href="https://placehold.co/1080x1920" download="eevee_mobile.png" class="download-btn py-2 px-4 rounded-lg font-semibold w-full block"><i class="fas fa-download mr-2"></i>Download</a></div></div>
-                <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg"><img class="w-full h-64 object-cover" src="https://placehold.co/1080x1920/121a2b/eaf1ff?text=Mobile+2" alt="Mobile Wallpaper 2"><div class="p-4 text-center"><a href="https://placehold.co/1080x1920" download="snorlax_mobile.png" class="download-btn py-2 px-4 rounded-lg font-semibold w-full block"><i class="fas fa-download mr-2"></i>Download</a></div></div>
-                <div class="wallpaper-card rounded-lg overflow-hidden shadow-lg"><img class="w-full h-64 object-cover" src="https://placehold.co/1080x1920/16223a/eaf1ff?text=Mobile+3" alt="Mobile Wallpaper 3"><div class="p-4 text-center"><a href="https://placehold.co/1080x1920" download="mewtwo_mobile.png" class="download-btn py-2 px-4 rounded-lg font-semibold w-full block"><i class="fas fa-download mr-2"></i>Download</a></div></div>
-            </div>
-        </section>
-    </div>
+    </main>
     <script>
     // --- MOBILE NAV SCRIPT ---
     const mobileNav = document.getElementById('mobileNav');
