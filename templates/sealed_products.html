@@ -148,18 +148,18 @@
 
             const filteredProducts = allProducts.filter(product => {
                 const setName = (product.set_name || '').toLowerCase();
-                const itemType = (product.item_type || '').toLowerCase();
+                const itemType = (product.item_title || '').toLowerCase();
                 return setName.includes(setQuery) && itemType.includes(typeQuery);
             });
 
             resultsGrid.innerHTML = filteredProducts.map(product => {
-                const ebayQuery = encodeURIComponent(`${product.set_name} ${product.item_type}`);
+                const ebayQuery = encodeURIComponent(`${product.set_name} ${product.item_title}`);
                 return `
                     <div class="product-card">
-                        <img src="${product.image_url}" alt="${product.set_name} ${product.item_type}">
+                        <img src="${product.image_url}" alt="${product.set_name} ${product.item_title}">
                         <h3>${product.set_name}</h3>
-                        <p>${product.item_type}</p>
-                        <p style="color: var(--poke-yellow); font-weight: 700; font-size: 1.2rem;">${product.price}</p>
+                        <p>${product.item_title}</p>
+                        <p style="color: var(--poke-yellow); font-weight: 700; font-size: 1.2rem;">${product.raw_price}</p>
                         <a href="https://www.ebay.com/sch/i.html?_nkw=${ebayQuery}" target="_blank" rel="noopener noreferrer" class="ebay-btn">
                             Check eBay
                         </a>
