@@ -185,6 +185,50 @@ def api_sealed_products():
         print(f"Error reading sealed products CSV at {csv_path}: {e}")
         return jsonify({"error": "Failed to read product data."}), 500
 
+# ---- New Global Related API ----
+@app.route("/api/global-related")
+def api_global_related():
+    title = request.args.get("title", "").strip().lower()
+    if not title:
+        return jsonify({"items": []})
+
+    # Extract keywords from the title
+    stopwords = ['pokemon', 'pokémon', 'tcg', 'sealed', 'box', 'pack', 'collection', 'tin', 'etb', 'elite', 'trainer']
+    title_words = set(re.findall(r'\w+', title)) - set(stopwords)
+
+    candidates = [
+        os.path.join(app.root_path, "sealed_item_prices", "tcg_sealed_prices.csv"),
+        os.path.join(app.root_path, "Sealed_Item_prices", "tcg_sealed_prices.csv"),
+        os.path.join(app.root_path, "tcg_sealed_prices.csv"),
+    ]
+    csv_path = next((p for p in candidates if os.path.exists(p)), None)
+    if not csv_path:
+        return jsonify({"items": []})
+
+    matches = []
+    try:
+        with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                normalized_row = _normalize_sealed_row(row)
+                item_text = (normalized_row.get("item_title", "") + " " + normalized_row.get("set_name", "")).lower()
+                
+                # Simple matching logic
+                if all(word in item_text for word in title_words):
+                    # Format for frontend card rendering
+                    matches.append({
+                        "title": normalized_row.get("item_title"),
+                        "price": f"€{normalized_row.get('price_eur', 0.0):.2f}",
+                        "image_url": normalized_row.get("image_url_hd"),
+                        "url": f"https://www.ebay.com/sch/i.html?_nkw={normalized_row.get('item_title', '')} Pokemon" # Example URL
+                    })
+    except Exception as e:
+        print(f"Error in /api/global-related: {e}")
+        return jsonify({"error": "Failed to process related items."}), 500
+
+    return jsonify({"items": matches[:8]}) # Limit to 8 results
+
+
 # ---- Market / history / other existing routes (unchanged) ----
 @app.route("/api/market-status")
 def api_market_status():
