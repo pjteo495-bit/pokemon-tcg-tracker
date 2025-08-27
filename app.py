@@ -192,9 +192,16 @@ def api_global_related():
     if not title:
         return jsonify({"items": []})
 
-    # Extract keywords from the title
-    stopwords = ['pokemon', 'pokémon', 'tcg', 'sealed', 'box', 'pack', 'collection', 'tin', 'etb', 'elite', 'trainer']
-    title_words = set(re.findall(r'\w+', title)) - set(stopwords)
+    # Improved keyword extraction
+    stopwords = {'pokemon', 'pokémon', 'tcg', 'sealed', 'official', 'english', 'card', 'cards'}
+    type_words = {'elite', 'trainer', 'box', 'etb', 'booster', 'pack', 'bundle', 'display', 'case', 'tin', 'deck', 'sleeves', 'binder', 'collection', 'blister'}
+    
+    # Extract words, keep numbers like '151'
+    title_tokens = re.findall(r'[a-z0-9]+', title)
+    search_keywords = {word for word in title_tokens if word not in stopwords and word not in type_words and not word.isdigit()}
+    # Add back important numbers
+    search_keywords.update({word for word in title_tokens if word.isdigit() and len(word) > 2})
+
 
     candidates = [
         os.path.join(app.root_path, "sealed_item_prices", "tcg_sealed_prices.csv"),
@@ -213,14 +220,18 @@ def api_global_related():
                 normalized_row = _normalize_sealed_row(row)
                 item_text = (normalized_row.get("item_title", "") + " " + normalized_row.get("set_name", "")).lower()
                 
-                # Simple matching logic
-                if all(word in item_text for word in title_words):
+                # Score based on keyword overlap
+                item_words = set(re.findall(r'[a-z0-9]+', item_text))
+                common_words = search_keywords.intersection(item_words)
+                
+                if len(common_words) >= len(search_keywords) * 0.75 and len(common_words) > 1: # Require good overlap
                     # Format for frontend card rendering
                     matches.append({
                         "title": normalized_row.get("item_title"),
                         "price": f"€{normalized_row.get('price_eur', 0.0):.2f}",
                         "image_url": normalized_row.get("image_url_hd"),
-                        "url": f"https://www.ebay.com/sch/i.html?_nkw={normalized_row.get('item_title', '')} Pokemon" # Example URL
+                        "url": f"https://www.ebay.com/sch/i.html?_nkw={normalized_row.get('item_title', '')} Pokemon", # Example URL
+                        "source": "" # Important: identify as non-local
                     })
     except Exception as e:
         print(f"Error in /api/global-related: {e}")
