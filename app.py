@@ -14,12 +14,12 @@ import random
 
 # --- Local Imports ---
 # Make sure scraper.py and scraper_pokemon.py are in the same directory
-import scraper 
+import scraper
 import scraper_pokemon
 import data_loader
 
 # --- Load Data on Startup ---
-# This is the critical fix: load the card data when the app starts.
+# This loads card data when the app starts.
 data_loader.load_data()
 
 app = Flask(__name__, template_folder="templates")
@@ -50,13 +50,11 @@ def index():
     """Renders the main search homepage."""
     tz = pytz.timezone('Europe/Athens')
     current_date = datetime.now(tz).strftime("%d %B %Y")
-    # Renders index.html in its default 'search' mode
     return render_template("index.html", base_url=request.url_root, current_date=current_date)
 
 @app.route("/item")
 def item_page():
     """Renders the detailed item page."""
-    # Collects item details passed as URL query parameters
     item_details = {
         "title": request.args.get("title", "Item"),
         "price": request.args.get("price", ""),
@@ -64,14 +62,11 @@ def item_page():
         "url": request.args.get("url", ""),
         "source": request.args.get("source", "N/A")
     }
-    # Renders index.html but sets the 'mode' to 'detail' to show the item view
     return render_template("index.html", mode="detail", item=item_details, base_url=request.url_root)
 
 @app.route("/tcg-tracker")
 def tcg_tracker_page():
     """Renders the TCG Tracker page."""
-    # This route now correctly serves the tcg_tracker.html template
-    # and passes the necessary base_url for API calls.
     return render_template("tcg_tracker.html", base_url=request.url_root)
 
 @app.route("/wallpapers")
@@ -114,44 +109,56 @@ def sealed_products_page():
     """Renders the sealed products page."""
     return render_template("sealed_products.html")
 
-
 @app.route("/api/sealed-products")
 def api_sealed_products():
     """Provides a list of sealed products from the CSV file."""
-    products = []
-    # Correct the path to look inside the 'sealed_item_prices' folder
-    csv_file_path = os.path.join("sealed_item_prices", "tcg_sealed_prices.csv")
-    
-    try:
-        with open(csv_file_path, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            products = list(reader)
-    except FileNotFoundError:
-        print(f"Error: The file {csv_file_path} was not found.")
-        return jsonify({"error": "Data file not found."}), 404
-    except Exception as e:
-        print(f"Error reading sealed products CSV: {e}")
-        return jsonify({"error": "Failed to read product data."}), 500
-        
-    return jsonify(products)
+    # Try both the subfolder and the project root (use absolute paths).
+    candidates = [
+        os.path.join(app.root_path, "sealed_item_prices", "tcg_sealed_prices.csv"),
+        os.path.join(app.root_path, "tcg_sealed_prices.csv"),
+    ]
 
+    for path in candidates:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8", newline="") as f:
+                    return jsonify(list(csv.DictReader(f)))
+            except Exception as e:
+                print(f"Error reading sealed products CSV at {path}: {e}")
+                return jsonify({"error": "Failed to read product data."}), 500
+
+    # Helpful logging in case of deploy path issues
+    print("Data file not found. Looked for:", candidates, "cwd=", os.getcwd())
+    return jsonify({"error": "Data file not found."}), 404
 
 @app.route("/api/market-status")
 def api_market_status():
     """Analyzes price history to provide a market overview."""
     history_dir = "Greek_Prices_History"
     # Define categories and associated keywords for market analysis
-    categories = { "Booster Packs": ["Booster Pack"], "Booster Box": ["Booster Box"], "Elite Trainer Box": ["Elite Trainer Box", "ETB"], "Binders": ["Binder"], "Collections": ["Collection"], "Tins": ["Tin"], "Blisters": ["Blister"], "Sleeves": ["Sleeves"], "Booster Bundles": ["Booster Bundle"], "Decks": ["Deck"] }
+    categories = {
+        "Booster Packs": ["Booster Pack"],
+        "Booster Box": ["Booster Box"],
+        "Elite Trainer Box": ["Elite Trainer Box", "ETB"],
+        "Binders": ["Binder"],
+        "Collections": ["Collection"],
+        "Tins": ["Tin"],
+        "Blisters": ["Blister"],
+        "Sleeves": ["Sleeves"],
+        "Booster Bundles": ["Booster Bundle"],
+        "Decks": ["Deck"]
+    }
     cutoff_date = datetime.now() - timedelta(days=30)
     all_data = []
-    
+
     # Glob both .xlsx and .csv files from the history directory
     files = glob.glob(os.path.join(history_dir, "*.xlsx")) + glob.glob(os.path.join(history_dir, "*.csv"))
     for file_path in files:
         try:
             file_datetime = parse_date_from_filename(os.path.splitext(os.path.basename(file_path))[0])
-            if not file_datetime or file_datetime < cutoff_date: continue
-            
+            if not file_datetime or file_datetime < cutoff_date:
+                continue
+
             df = pd.read_csv(file_path, encoding='utf-8-sig') if file_path.endswith('.csv') else pd.read_excel(file_path)
             df.columns = [str(c).lower().strip() for c in df.columns]
             df['date'] = file_datetime
@@ -159,39 +166,48 @@ def api_market_status():
         except Exception as e:
             print(f"Skipping history file {file_path}: {e}")
             continue
-            
-    if not all_data: return jsonify({"error": "No recent history data found"}), 404
-    
+
+    if not all_data:
+        return jsonify({"error": "No recent history data found"}), 404
+
     full_history = pd.concat(all_data, ignore_index=True)
     title_col = next((c for c in ['item_title', 'title', 'name'] if c in full_history.columns), None)
     price_col = next((c for c in ['price', 'current_price'] if c in full_history.columns), None)
-    
-    if not title_col or not price_col: return jsonify({"error": "Could not find title/price columns"}), 500
-    
+
+    if not title_col or not price_col:
+        return jsonify({"error": "Could not find title/price columns"}), 500
+
     # Clean and convert price column to numeric
-    full_history[price_col] = pd.to_numeric(full_history[price_col].astype(str).str.replace('[€,]', '', regex=True), errors='coerce')
+    full_history[price_col] = pd.to_numeric(
+        full_history[price_col].astype(str).str.replace('[€,]', '', regex=True),
+        errors='coerce'
+    )
     full_history.dropna(subset=[price_col], inplace=True)
-    
+
     market_status = []
     for category_name, keywords in categories.items():
         cat_df = full_history[full_history[title_col].str.contains('|'.join(keywords), case=False, na=False)]
-        if cat_df.empty: continue
-        
+        if cat_df.empty:
+            continue
+
         changes = []
         for _, group in cat_df.groupby(title_col):
             if len(group) > 1:
                 group = group.sort_values('date')
                 start_price = group.iloc[0][price_col]
                 end_price = group.iloc[-1][price_col]
-                if start_price > 0: changes.append(((end_price - start_price) / start_price) * 100)
-        
+                if start_price > 0:
+                    changes.append(((end_price - start_price) / start_price) * 100)
+
         status, explanation = 'yellow', '(Prices Stable)'
         if changes:
             avg_change = sum(changes) / len(changes)
-            if avg_change > 2.5: status, explanation = 'green', '(Prices Rising)'
-            elif avg_change < -2.5: status, explanation = 'red', '(Prices Lowering)'
+            if avg_change > 2.5:
+                status, explanation = 'green', '(Prices Rising)'
+            elif avg_change < -2.5:
+                status, explanation = 'red', '(Prices Lowering)'
         market_status.append({"category": category_name, "status": status, "explanation": explanation})
-        
+
     return jsonify(market_status)
 
 @app.route("/api/price-history")
@@ -200,33 +216,35 @@ def api_price_history():
     item_title = request.args.get("title", "").strip()
     if not item_title:
         return jsonify({"error": "Missing item title"}), 400
-    
+
     normalized_search_title = normalize_title_for_history(item_title)
     history_dir = "Greek_Prices_History"
     price_history = []
-    
+
     if not os.path.isdir(history_dir):
         return jsonify({"error": "History directory not found"}), 500
-    
+
     files = glob.glob(os.path.join(history_dir, "*.xlsx")) + glob.glob(os.path.join(history_dir, "*.csv"))
     for file_path in files:
         try:
             filename = os.path.basename(file_path)
             date_str = os.path.splitext(filename)[0]
             file_datetime = parse_date_from_filename(date_str)
-            if not file_datetime: continue
+            if not file_datetime:
+                continue
 
             file_date = file_datetime.strftime("%Y-%m-%d")
             df = pd.read_csv(file_path, encoding='utf-8-sig') if file_path.lower().endswith('.csv') else pd.read_excel(file_path)
             df.columns = [str(c).lower().strip() for c in df.columns]
-            
+
             title_col = next((c for c in ['item_title', 'title', 'name'] if c in df.columns), None)
             price_col = next((c for c in ['price', 'current_price'] if c in df.columns), None)
-            if not title_col or not price_col: continue
+            if not title_col or not price_col:
+                continue
 
             df['normalized_title'] = df[title_col].apply(normalize_title_for_history)
             item_row = df[df['normalized_title'] == normalized_search_title]
-            
+
             if not item_row.empty:
                 price_str = str(item_row.iloc[0][price_col])
                 price_val = float(price_str.replace('€', '').replace(',', '.').strip())
@@ -234,7 +252,7 @@ def api_price_history():
         except Exception as e:
             print(f"Could not process file {file_path}: {e}")
             continue
-            
+
     price_history.sort(key=lambda x: x['date'])
     return jsonify(price_history)
 
@@ -245,8 +263,7 @@ def api_related_products():
     original_url = request.args.get("url", "").strip()
     if not title:
         return jsonify({"items": []})
-    
-    # Calls the new function in scraper.py, fetching 8 items
+
     items = scraper.get_related_products(title, original_url, limit=8)
     return jsonify({"items": items})
 
@@ -265,7 +282,8 @@ def api_home():
 def api_search():
     """Handles search queries from the user."""
     q = (request.args.get("q") or "").strip()
-    if not q: return jsonify({"items": [], "has_more": False, "total": 0})
+    if not q:
+        return jsonify({"items": [], "has_more": False, "total": 0})
     sort = request.args.get("sort", "bestsellers")
     page = max(1, int(request.args.get("page", 1)))
     page_size = 24
@@ -278,7 +296,8 @@ def api_search():
 def api_suggest():
     """Provides search suggestions as the user types."""
     q = (request.args.get("q") or "").strip()
-    if not q: return jsonify({"items": []})
+    if not q:
+        return jsonify({"items": []})
     return jsonify({"items": scraper.suggest_titles(q, limit=10)})
 
 # --- TCG TRACKER API ROUTES ---
@@ -286,16 +305,19 @@ def api_suggest():
 def api_tcg_suggest():
     """Provides card suggestions for the TCG tracker."""
     q = (request.args.get("q") or "").strip()
-    if not q: return jsonify({"items": []})
+    if not q:
+        return jsonify({"items": []})
     return jsonify({"items": scraper_pokemon.search_pokemon_tcg(q, page_size=12)})
 
 @app.route("/api/tcg/card")
 def api_tcg_card():
     """Fetches detailed information for a specific card."""
     card_id = (request.args.get("id") or "").strip()
-    if not card_id: return jsonify({"error": "Missing id"}), 400
+    if not card_id:
+        return jsonify({"error": "Missing id"}), 400
     data = scraper_pokemon.get_card_details(card_id)
-    if not data: return jsonify({"error": "Not found"}), 404
+    if not data:
+        return jsonify({"error": "Not found"}), 404
     return jsonify(data)
 
 @app.route("/api/tcg/related")
@@ -338,11 +360,10 @@ def api_tcg_random_trending():
                 cards = list(reader)
         except Exception as e:
             print(f"Error reading CSV file {latest_file}: {e}")
-    
+
     if len(cards) > 10:
         return jsonify(random.sample(cards, 10))
     return jsonify(cards)
-
 
 if __name__ == "__main__":
     app.run(debug=True, use_reloader=True)
