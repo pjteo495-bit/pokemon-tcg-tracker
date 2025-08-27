@@ -29,16 +29,46 @@
     .product-card p{color:var(--muted);margin-bottom:10px}
     .price{color:var(--poke-yellow);font-weight:800;font-size:1.2rem;margin-bottom:12px}
     .ebay-btn{display:inline-block;width:100%;padding:10px;background:#5a5a5a;color:#fff;border-radius:10px;text-decoration:none;font-weight:600}
+    
+    /* Mobile Nav Styles */
+    .mobile-nav-toggle { display: none; }
+    .mobile-nav {
+        position: fixed; top: 0; left: -280px; width: 280px; height: 100%;
+        background: var(--panel); padding: 20px; z-index: 1000;
+        transition: left 0.3s ease-in-out;
+        border-right: 1px solid var(--border);
+    }
+    .mobile-nav.open { left: 0; }
+    .mobile-nav a {
+        display: block; color: var(--text); text-decoration: none;
+        font-size: 18px; padding: 15px 0; border-bottom: 1px solid var(--border);
+    }
+    .mobile-nav a i { margin-right: 10px; }
+
     @media (max-width: 768px) {
-        .nav-btn span { display: none; }
-        .nav-btn { padding: 10px 12px; }
-        .header { flex-direction: column; gap: 15px; }
+        .nav-buttons { display: none; }
+        .mobile-nav-toggle {
+            display: block;
+            background: none; border: none; color: var(--text);
+            font-size: 24px; cursor: pointer;
+        }
+        .header { justify-content: space-between; width: 100%; }
+        .logo { flex-grow: 1; }
     }
   </style>
 </head>
 <body>
+  <div class="mobile-nav" id="mobileNav">
+      <a href="/"><i class="fas fa-store"></i> Marketplace</a>
+      <a href="/tcg-tracker"><i class="fas fa-search"></i> TCG Tracker</a>
+      <a href="/top100"><i class="fas fa-fire"></i> Top 100</a>
+      <a href="/wallpapers"><i class="fas fa-image"></i> Wallpapers</a>
+      <a href="/global-prices"><i class="fas fa-globe"></i> Global Prices</a>
+  </div>
+
   <div class="wrap">
     <header class="header">
+        <button class="mobile-nav-toggle" id="mobileNavOpen"><i class="fas fa-bars"></i></button>
         <a href="/" class="logo">
             <img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="Pokegr Logo" width="42" height="42">
             <h1>POKEGR</h1>
@@ -64,6 +94,20 @@
   </div>
 
   <script>
+    // --- MOBILE NAV SCRIPT ---
+    const mobileNav = document.getElementById('mobileNav');
+    const openBtn = document.getElementById('mobileNavOpen');
+    
+    openBtn.addEventListener('click', () => {
+        mobileNav.classList.toggle('open');
+    });
+    
+    document.addEventListener('click', (e) => {
+        if (!mobileNav.contains(e.target) && !openBtn.contains(e.target)) {
+            mobileNav.classList.remove('open');
+        }
+    });
+
     const setSearch   = document.getElementById('setSearch');
     const typeSearch  = document.getElementById('typeSearch');
     const resultsGrid = document.getElementById('resultsGrid');
