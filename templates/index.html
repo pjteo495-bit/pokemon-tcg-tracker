@@ -41,9 +41,9 @@
     color:var(--text); 
     font-family:'Poppins', system-ui, sans-serif;
     min-height:100vh; 
-    overflow-x: hidden;
   }
-  .wrap{max-width:1200px;margin:0 auto;padding:22px 16px 42px; overflow-x: hidden;}
+  main.page-content { overflow-x: hidden; }
+  .wrap{max-width:1200px;margin:0 auto;padding:22px 16px 42px;}
   
   .header {
     display: flex;
@@ -177,7 +177,7 @@
       font-size: 18px; padding: 15px 0; border-bottom: 1px solid var(--border);
   }
   .mobile-nav a i { margin-right: 10px; }
-
+  .header-spacer { display: none; }
 
   @media (max-width: 768px) {
     .nav-buttons { display: none; }
@@ -185,13 +185,18 @@
         display: block;
         background: none; border: none; color: var(--text);
         font-size: 24px; cursor: pointer;
+        flex: 0 0 40px;
+        padding: 0;
+        text-align: left;
     }
     .header {
-      justify-content: space-between;
-      width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
-    .logo {
-        flex-grow: 1;
+    .header-spacer {
+        display: block;
+        flex: 0 0 40px;
     }
     .grid{
         grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
@@ -219,134 +224,137 @@
     <a href="/global-prices"><i class="fas fa-globe"></i> Global Prices</a>
 </div>
 
-<div class="wrap">
-  <header class="header">
-    <button class="mobile-nav-toggle" id="mobileNavOpen"><i class="fas fa-bars"></i></button>
-    <a href="/" class="logo">
-        <img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="Pokegr Logo" class="poke-ball">
-        <h1>POKEGR</h1>
-    </a>
-    <div class="nav-buttons">
-        <a href="/tcg-tracker" class="nav-btn"><i class="fas fa-search"></i> <span>TCG Tracker</span></a>
-        <a href="/top100" class="nav-btn"><i class="fas fa-fire"></i> <span>Top 100</span></a>
-        <a href="/wallpapers" class="nav-btn"><i class="fas fa-image"></i> <span>Wallpapers</span></a>
-        <a href="/global-prices" class="nav-btn"><i class="fas fa-globe"></i> <span>Global Prices</span></a>
-    </div>
-  </header>
-
-  {% if item is defined %}
-
-  <!-- ======================= -->
-  <!-- == ITEM DETAIL VIEW  == -->
-  <!-- ======================= -->
-  <div class="toolbar">
-    <div class="search">
-      <input id="q" type="text" placeholder="Search products and cards..." autocomplete="off"/>
-      <div id="suggest" class="suggest" aria-hidden="true"></div>
-    </div>
-    <button class="btn" id="btnSearch">Search</button>
-    <select id="sort" class="select">
-      <option value="bestsellers">Bestsellers</option>
-      <option value="price_asc">Price: Low to High</option>
-      <option value="price_desc">Price: High to Low</option>
-      <option value="alpha">Alphabetically</option>
-    </select>
-  </div>
-
-  <div class="item-detail-container">
-    <div class="item-image">
-        <img src="{{ item.image_url }}" alt="{{ item.title }}" onerror="this.style.visibility='hidden'">
-    </div>
-    <div class="item-info">
-        <h2>{{ item.title }}</h2>
-        <div class="price">{{ item.price }}</div>
-        <div id="priceTrendSummary" class="price-trend-summary"></div>
-        <div class="flex gap-4 mt-4">
-            <a href="{{ item.url }}" target="_blank" rel="noopener" class="view-on-site-btn">
-                Visit Store &nbsp;<i class="fas fa-external-link-alt"></i>
-            </a>
-            <a href="https://www.tcgplayer.com/search/pokemon/product?q={{ item.title|urlencode }}" target="_blank" rel="noopener" class="view-on-site-btn" style="background-color: #1a237e;">
-                Check TCGplayer
-            </a>
-            <a href="https://www.ebay.com/sch/i.html?_nkw={{ item.title|urlencode }} Pokemon" target="_blank" rel="noopener" class="view-on-site-btn" style="background-color: #5a5a5a;">
-                Check eBay
-            </a>
+<main class="page-content">
+    <div class="wrap">
+      <header class="header">
+        <button class="mobile-nav-toggle" id="mobileNavOpen"><i class="fas fa-bars"></i></button>
+        <a href="/" class="logo">
+            <img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="Pokegr Logo" class="poke-ball">
+            <h1>POKEGR</h1>
+        </a>
+        <div class="header-spacer"></div>
+        <div class="nav-buttons">
+            <a href="/tcg-tracker" class="nav-btn"><i class="fas fa-search"></i> <span>TCG Tracker</span></a>
+            <a href="/top100" class="nav-btn"><i class="fas fa-fire"></i> <span>Top 100</span></a>
+            <a href="/wallpapers" class="nav-btn"><i class="fas fa-image"></i> <span>Wallpapers</span></a>
+            <a href="/global-prices" class="nav-btn"><i class="fas fa-globe"></i> <span>Global Prices</span></a>
         </div>
-    </div>
-  </div>
+      </header>
 
-  <div class="history-section">
-      <h3 class="section-title">Price History</h3>
-      <div class="timeframe-btns">
-          <button class="timeframe-btn active" data-range="1">1M</button>
-          <button class="timeframe-btn" data-range="3">3M</button>
-          <button class="timeframe-btn" data-range="6">6M</button>
-          <button class="timeframe-btn" data-range="12">1Y</button>
-      </div>
-      <div class="chart-container">
-          <canvas id="priceChart" style="display: none;"></canvas>
-      </div>
-      <div id="chartLoader" class="spinner" style="margin: 40px auto; display: block;"></div>
-      <p id="noHistoryMsg" style="text-align: center; color: var(--muted); display: none;">No price history available for this item.</p>
-  </div>
+      {% if item is defined %}
 
-  <div class="related-section">
-      <h3 class="section-title">People Also Viewed</h3>
-      <div id="relatedGrid" class="grid"></div>
-      <div id="relatedLoader" class="spinner" style="margin: 20px auto; display: block;"></div>
-  </div>
-
-  {% else %}
-
-  <!-- ======================= -->
-  <!-- == MAIN SEARCH VIEW  == -->
-  <!-- ======================= -->
-  <div class="hero">
-    <h2 class="hero-title">POKEGR TCG TRACKER</h2>
-    <div class="subtitle">Catch the best Greek Pokémon TCG prices — fast.</div>
-    
-    <div style="text-align: center; margin-bottom: 24px;">
-        <button id="toggleMarketStatusBtn" class="nav-btn" style="background-color: var(--poke-green);">
-            <i class="fas fa-chart-line"></i>
-            <span>View Greek Market Overview</span>
-        </button>
-    </div>
-
-    <div id="marketStatus" class="market-status" style="display: none;">
-        <h3 class="market-title">GREEK MARKET STATUS</h3>
-        <p class="market-date">{{ current_date }}</p>
-        <p style="text-align: center; color: var(--muted); font-size: 14px; max-width: 600px; margin: 0 auto 16px;">
-            This is an overview of the Greek Pokémon TCG market based on price changes over the last 30 days. Click on a category to search for related products.
-        </p>
-        <div id="marketGrid" class="market-grid">
+      <!-- ======================= -->
+      <!-- == ITEM DETAIL VIEW  == -->
+      <!-- ======================= -->
+      <div class="toolbar">
+        <div class="search">
+          <input id="q" type="text" placeholder="Search products and cards..." autocomplete="off"/>
+          <div id="suggest" class="suggest" aria-hidden="true"></div>
         </div>
-    </div>
-    
-    <div class="toolbar">
-      <div class="search">
-        <input id="q" type="text" placeholder="Search products and cards..." autocomplete="off"/>
-        <div id="suggest" class="suggest" aria-hidden="true"></div>
+        <button class="btn" id="btnSearch">Search</button>
+        <select id="sort" class="select">
+          <option value="bestsellers">Bestsellers</option>
+          <option value="price_asc">Price: Low to High</option>
+          <option value="price_desc">Price: High to Low</option>
+          <option value="alpha">Alphabetically</option>
+        </select>
       </div>
-      <button class="btn" id="btnSearch">Search</button>
-      <select id="sort" class="select">
-        <option value="bestsellers">Bestsellers</option>
-        <option value="price_asc">Price: Low to High</option>
-        <option value="price_desc">Price: High to Low</option>
-        <option value="alpha">Alphabetically</option>
-      </select>
-    </div>
-  </div>
 
-  <div class="content">
-    <div id="grid" class="grid" aria-live="polite"></div>
-    <div class="loadwrap">
-      <button id="loadMore" class="loadmore">Load More</button>
-      <div id="loadingSpinner" class="spinner" aria-hidden="true"></div>
-    </div>
-  </div>
+      <div class="item-detail-container">
+        <div class="item-image">
+            <img src="{{ item.image_url }}" alt="{{ item.title }}" onerror="this.style.visibility='hidden'">
+        </div>
+        <div class="item-info">
+            <h2>{{ item.title }}</h2>
+            <div class="price">{{ item.price }}</div>
+            <div id="priceTrendSummary" class="price-trend-summary"></div>
+            <div class="flex gap-4 mt-4">
+                <a href="{{ item.url }}" target="_blank" rel="noopener" class="view-on-site-btn">
+                    Visit Store &nbsp;<i class="fas fa-external-link-alt"></i>
+                </a>
+                <a href="https://www.tcgplayer.com/search/pokemon/product?q={{ item.title|urlencode }}" target="_blank" rel="noopener" class="view-on-site-btn" style="background-color: #1a237e;">
+                    Check TCGplayer
+                </a>
+                <a href="https://www.ebay.com/sch/i.html?_nkw={{ item.title|urlencode }} Pokemon" target="_blank" rel="noopener" class="view-on-site-btn" style="background-color: #5a5a5a;">
+                    Check eBay
+                </a>
+            </div>
+        </div>
+      </div>
 
-  {% endif %}
-</div>
+      <div class="history-section">
+          <h3 class="section-title">Price History</h3>
+          <div class="timeframe-btns">
+              <button class="timeframe-btn active" data-range="1">1M</button>
+              <button class="timeframe-btn" data-range="3">3M</button>
+              <button class="timeframe-btn" data-range="6">6M</button>
+              <button class="timeframe-btn" data-range="12">1Y</button>
+          </div>
+          <div class="chart-container">
+              <canvas id="priceChart" style="display: none;"></canvas>
+          </div>
+          <div id="chartLoader" class="spinner" style="margin: 40px auto; display: block;"></div>
+          <p id="noHistoryMsg" style="text-align: center; color: var(--muted); display: none;">No price history available for this item.</p>
+      </div>
+
+      <div class="related-section">
+          <h3 class="section-title">People Also Viewed</h3>
+          <div id="relatedGrid" class="grid"></div>
+          <div id="relatedLoader" class="spinner" style="margin: 20px auto; display: block;"></div>
+      </div>
+
+      {% else %}
+
+      <!-- ======================= -->
+      <!-- == MAIN SEARCH VIEW  == -->
+      <!-- ======================= -->
+      <div class="hero">
+        <h2 class="hero-title">POKEGR TCG TRACKER</h2>
+        <div class="subtitle">Catch the best Greek Pokémon TCG prices — fast.</div>
+        
+        <div style="text-align: center; margin-bottom: 24px;">
+            <button id="toggleMarketStatusBtn" class="nav-btn" style="background-color: var(--poke-green);">
+                <i class="fas fa-chart-line"></i>
+                <span>View Greek Market Overview</span>
+            </button>
+        </div>
+
+        <div id="marketStatus" class="market-status" style="display: none;">
+            <h3 class="market-title">GREEK MARKET STATUS</h3>
+            <p class="market-date">{{ current_date }}</p>
+            <p style="text-align: center; color: var(--muted); font-size: 14px; max-width: 600px; margin: 0 auto 16px;">
+                This is an overview of the Greek Pokémon TCG market based on price changes over the last 30 days. Click on a category to search for related products.
+            </p>
+            <div id="marketGrid" class="market-grid">
+            </div>
+        </div>
+        
+        <div class="toolbar">
+          <div class="search">
+            <input id="q" type="text" placeholder="Search products and cards..." autocomplete="off"/>
+            <div id="suggest" class="suggest" aria-hidden="true"></div>
+          </div>
+          <button class="btn" id="btnSearch">Search</button>
+          <select id="sort" class="select">
+            <option value="bestsellers">Bestsellers</option>
+            <option value="price_asc">Price: Low to High</option>
+            <option value="price_desc">Price: High to Low</option>
+            <option value="alpha">Alphabetically</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="content">
+        <div id="grid" class="grid" aria-live="polite"></div>
+        <div class="loadwrap">
+          <button id="loadMore" class="loadmore">Load More</button>
+          <div id="loadingSpinner" class="spinner" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      {% endif %}
+    </div>
+</main>
 
 
 <script>
@@ -365,7 +373,6 @@
           mobileNav.classList.remove('open');
       }
   });
-
 
   // --- SHARED FUNCTIONS (used by both pages) ---
   function cardHTML(p) {
