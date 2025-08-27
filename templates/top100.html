@@ -80,17 +80,31 @@
             background: #1b4f8e;
             transform: translateY(-2px);
         }
+        
+        /* Mobile Nav Styles */
+        .mobile-nav-toggle { display: none; }
+        .mobile-nav {
+            position: fixed; top: 0; left: -280px; width: 280px; height: 100%;
+            background: var(--panel); padding: 20px; z-index: 1000;
+            transition: left 0.3s ease-in-out;
+            border-right: 1px solid var(--border);
+        }
+        .mobile-nav.open { left: 0; }
+        .mobile-nav a {
+            display: block; color: var(--text); text-decoration: none;
+            font-size: 18px; padding: 15px 0; border-bottom: 1px solid var(--border);
+        }
+        .mobile-nav a i { margin-right: 10px; }
+
         @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                gap: 15px;
+            .nav-buttons { display: none; }
+            .mobile-nav-toggle {
+                display: block;
+                background: none; border: none; color: var(--text);
+                font-size: 24px; cursor: pointer;
             }
-            .nav-btn span {
-                display: none;
-            }
-            .nav-btn {
-                padding: 10px 12px;
-            }
+            .header { justify-content: space-between; width: 100%; }
+            .logo { flex-grow: 1; }
             #card-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
@@ -98,9 +112,17 @@
     </style>
 </head>
 <body>
+    <div class="mobile-nav" id="mobileNav">
+        <a href="/"><i class="fas fa-store"></i> Marketplace</a>
+        <a href="/tcg-tracker"><i class="fas fa-search"></i> TCG Tracker</a>
+        <a href="/top100"><i class="fas fa-fire"></i> Top 100</a>
+        <a href="/wallpapers"><i class="fas fa-image"></i> Wallpapers</a>
+        <a href="/global-prices"><i class="fas fa-globe"></i> Global Prices</a>
+    </div>
 
     <div class="container mx-auto px-4 py-8">
         <header class="header">
+            <button class="mobile-nav-toggle" id="mobileNavOpen"><i class="fas fa-bars"></i></button>
             <a href="/" class="logo">
                 <img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="Pokegr Logo" class="poke-ball" width="42" height="42">
                 <h1>POKEGR</h1>
@@ -169,7 +191,20 @@
     </div>
 
     <script>
-    // ... (JavaScript is unchanged) ...
+    // --- MOBILE NAV SCRIPT ---
+    const mobileNav = document.getElementById('mobileNav');
+    const openBtn = document.getElementById('mobileNavOpen');
+    
+    openBtn.addEventListener('click', () => {
+        mobileNav.classList.toggle('open');
+    });
+    
+    document.addEventListener('click', (e) => {
+        if (!mobileNav.contains(e.target) && !openBtn.contains(e.target)) {
+            mobileNav.classList.remove('open');
+        }
+    });
+
     document.addEventListener('DOMContentLoaded', () => {
         const grid = document.getElementById('card-grid');
         const searchInput = document.getElementById('searchInput');
