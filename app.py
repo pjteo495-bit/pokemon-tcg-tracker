@@ -6,19 +6,29 @@ import pandas as pd
 import pytz
 
 # --- Local Imports ---
-import scraper
-import scraper_pokemon
-import data_loader
+try:
+    import scraper
+    import scraper_pokemon
+    import data_loader
+    # --- Load Data on Startup ---
+    data_loader.load_data()
+except ImportError:
+    print("Warning: Local modules (scraper, scraper_pokemon, data_loader) not found. Some features may not work.")
+    # Create dummy modules/functions if they don't exist to prevent crashes
+    class Dummy:
+        def __getattr__(self, _):
+            return lambda *args, **kwargs: None
+    scraper = Dummy()
+    scraper_pokemon = Dummy()
+    data_loader = Dummy()
 
-# --- Load Data on Startup ---
-data_loader.load_data()
 
 app = Flask(__name__, template_folder="templates")
 
 # ---- Config ----
 USD_TO_EUR = float(os.environ.get("USD_TO_EUR", "0.86"))
 
-# ---------- Helpers ----------
+# ---------- Helpers ----------0.8
 def parse_date_from_filename(name):
     for fmt in ("%d %m %Y", "%Y-%m-%d", "%d-%m-%Y", "%m-%d-%Y"):
         try:
@@ -39,14 +49,19 @@ def _upgrade_image(url: str, level: int = 1) -> str:
     if not url:
         return url
     try:
+        # --- PriceCharting ---
+        # As requested, we replace the low-res /60.jpg with high-res /1600.jpg
+        if "pricecharting.com" in url:
+            return url.replace("/60.jpg", "/1600.jpg")
+
         # --- eBay ---
-        # Common forms: .../s-l64.jpg, /s-l140.jpg, /s-l225.jpg, /s-l500.jpg, /s-l1200.jpg, /s-l1600.jpg
+        # Common forms: .../s-l64.jpg, /s-l140.jpg, /s-l225.jpg, /s-l500.jpg
         if "i.ebayimg.com" in url:
             size = 1200 if level >= 2 else 800
             url = re.sub(r"/s-l\d+(\.\w+)(\?.*)?$", fr"/s-l{size}\1", url)
 
         # --- TCGplayer ---
-        # product-images.tcgplayer.com/fit-in/437x437/...  -> bump box
+        # product-images.tcgplayer.com/fit-in/437x437/... -> bump box
         if "tcgplayer" in url:
             box = 1000 if level >= 2 else 700
             url = re.sub(r"/fit-in/\d+x\d+/", fr"/fit-in/{box}x{box}/", url)
@@ -80,16 +95,16 @@ def _normalize_sealed_row(row: dict) -> dict:
     norm = {re.sub(r"\s+", "_", (k or "").strip().lower()): (v or "").strip()
             for k, v in row.items()}
 
-    set_name   = norm.get("set_name") or norm.get("set") or norm.get("series")
+    set_name = norm.get("set_name") or norm.get("set") or norm.get("series")
     item_title = norm.get("item_title") or norm.get("title") or norm.get("item") or norm.get("product_title")
-    raw_price  = norm.get("raw_price") or norm.get("price") or norm.get("current_price")
-    image_url  = norm.get("image_url") or norm.get("image") or norm.get("img_url") or norm.get("img")
+    raw_price = norm.get("raw_price") or norm.get("price") or norm.get("current_price")
+    image_url = norm.get("image_url") or norm.get("image") or norm.get("img_url") or norm.get("img")
 
     usd = _parse_price_to_float(raw_price) or 0.0
     eur = round(usd * USD_TO_EUR, 2)
 
     # build HD + XHD variants
-    img_hd  = _upgrade_image(image_url, level=1) or image_url
+    img_hd = _upgrade_image(image_url, level=1) or image_url
     img_xhd = _upgrade_image(image_url, level=2) or img_hd
 
     return {
