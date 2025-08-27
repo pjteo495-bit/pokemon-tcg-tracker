@@ -119,8 +119,8 @@ def sealed_products_page():
 def api_sealed_products():
     """Provides a list of sealed products from the CSV file."""
     products = []
-    # Directly specify the CSV file to be read.
-    csv_file_path = "tcg_sealed_prices.csv"
+    # Correct the path to look inside the 'sealed_item_prices' folder
+    csv_file_path = os.path.join("sealed_item_prices", "tcg_sealed_prices.csv")
     
     try:
         with open(csv_file_path, 'r', encoding='utf-8') as f:
