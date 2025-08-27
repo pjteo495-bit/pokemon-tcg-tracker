@@ -444,7 +444,7 @@
     let priceChart = null;
     let currentHistoryData = [];
 
-    /* ---------- Matching helpers (English-only + set-aware) ---------- */
+   /* ---------- Universal matching helpers ---------- */
   const TYPE_SYNONYMS = {
     boosterpack: ["boosterpack","pack"],
     boosterbox: ["boosterbox","box","display"],
@@ -458,189 +458,161 @@
     binder: ["binder"]
   };
 
-  // Generic words we never use for matching
+  // generic fluff (English only)
   const GENERIC_STOPWORDS = new Set([
-    "pokemon","pokémon","tcg","sealed","official","english","greek","new","factory",
-    "original","trading","card","cards","the","a","an"
+    "pokemon","pokémon","tcg","sealed","official","english","greek",
+    "new","factory","original","trading","card","cards","the","a","an"
   ]);
+  // series words (too broad)
+  const GENERIC_SERIES = new Set(["scarlet","violet","scarletviolet","sv"]);
+  // type words (handled via detectType)
+  const TYPE_WORDS = new Set(["elite","trainer","box","etb","booster","pack","bundle","display","case","tin","deck","sleeves","binder","collection","blister"]);
 
-  // Words that describe the series or set family (too broad)
-  const GENERIC_SERIES = new Set([
-    "scarlet","violet","scarletviolet","sv"
-  ]);
-
-  // Type words (we detect type separately; don’t let them dominate matching)
-  const TYPE_WORDS = new Set([
-    "elite","trainer","box","etb","booster","pack","bundle","display","case",
-    "tin","deck","sleeves","binder","collection","blister"
-  ]);
-
-  // Filter clear outliers (ETB case, bundle lots, etc.)
-  const OUTLIER_WORDS_RE = /\b(case|cases|sealed case|lot|bundle|display|boxset|tournament|collection box)\b/i;
-  const POKEMON_CENTER_RE = /pokemon\s*center/i;
-
-  // Very broad but useful price sanity check (EUR) by item type
+  // price sanity (EUR)
   const PRICE_GUARD = {
-    elitetrainerbox: [20, 200],
-    boosterbox:     [50, 500],
-    boosterpack:    [ 2,  20],
-    boosterbundle:  [15, 120],
-    blister:        [ 4,  60],
-    collection:     [15, 300],
-    tin:            [10, 150],
-    deck:           [ 5, 120],
-    sleeves:        [ 3,  40],
-    binder:         [ 5,  90]
+    elitetrainerbox:[20,200], boosterbox:[50,500], boosterpack:[2,20],
+    boosterbundle:[15,120], blister:[4,60], collection:[15,300],
+    tin:[10,150], deck:[5,120], sleeves:[3,40], binder:[5,90]
   };
 
   function pricePlausible(type, eur){
-    const r = PRICE_GUARD[type];
-    if (!r) return eur > 0;
-    return eur >= r[0] && eur <= r[1];
+    const r = PRICE_GUARD[type]; if(!r) return eur>0; return eur>=r[0] && eur<=r[1];
   }
 
-  // Keep only ASCII a–z and digits during normalization (Greek letters discarded).
+  // Normalize to lowercase ASCII letters + digits; removes accents & Greek.
   function normalize(str){
     return (str||'')
       .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')   // strip diacritics (é -> e)
       .replace(/[^a-z0-9\s]/g,' ')
       .replace(/\s+/g,' ')
       .trim();
   }
 
-  // Basic tokenization with English-only rule + stopwords removed
   function baseTokens(str){
-    return normalize(str)
-      .split(' ')
+    return normalize(str).split(' ')
       .filter(Boolean)
-      // English-only: token must contain at least one a–z letter
-      .filter(t => /[a-z]/.test(t))
+      .filter(t => /[a-z]/.test(t))                 // English only
       .filter(t => !GENERIC_STOPWORDS.has(t));
   }
 
-  // Core tokens: remove numeric/SKU noise and generic series + type words
   function coreTokens(str){
-    const keepSpecialNumbers = new Set(["151"]); // keep set “151” if it appears
+    const keepNumbers = new Set(["151"]);           // keep set 151
     return baseTokens(str).filter(t=>{
-      if (/^pok\d+$/i.test(t)) return false;       // POK113664 etc.
-      if (/^\d+$/.test(t) && !keepSpecialNumbers.has(t)) return false;
-      if (GENERIC_SERIES.has(t)) return false;     // scarlet/violet/sv
-      if (TYPE_WORDS.has(t)) return false;         // elite/trainer/box/…
+      if (/^pok\d+$/i.test(t)) return false;        // POK113664
+      if (/^\d+$/.test(t) && !keepNumbers.has(t)) return false;
+      if (GENERIC_SERIES.has(t)) return false;
+      if (TYPE_WORDS.has(t)) return false;
       return t.length >= 3;
     });
   }
 
-  // Phrases (bigrams) preserve set names like “black bolt”, “obsidian flames”
-  function bigrams(tokens){
-    const out=[]; for(let i=0;i<tokens.length-1;i++) out.push(tokens[i]+' '+tokens[i+1]); return out;
-  }
+  function bigrams(tokens){ const out=[]; for(let i=0;i<tokens.length-1;i++) out.push(tokens[i]+' '+tokens[i+1]); return out; }
 
   function detectType(str){
     const n = normalize(str).replace(/\s/g,'');
-    for (const [key, vars] of Object.entries(TYPE_SYNONYMS)) {
-      if (vars.some(v => n.includes(v))) return key;
+    for(const [key,vars] of Object.entries(TYPE_SYNONYMS)){
+      if(vars.some(v => n.includes(v))) return key;
     }
     return null;
   }
 
   function jaccard(a,b){
-    const A = new Set(a), B = new Set(b);
-    const inter = [...A].filter(x=>B.has(x));
-    const union = new Set([...A,...B]);
-    return { score: union.size ? inter.length/union.size : 0, inter };
+    const A=new Set(a), B=new Set(b);
+    const inter=[...A].filter(x=>B.has(x));
+    const union=new Set([...A,...B]);
+    return {score: union.size? inter.length/union.size : 0, inter};
   }
 
   function parseEuro(s){
-    if (!s) return null;
-    const m = String(s).match(/[\d.,]+/);
-    if (!m) return null;
-    let v = m[0];
-    if (v.includes(',') && v.includes('.')) v = v.replace(/\./g,'').replace(',', '.');
-    else if (v.includes(',')) v = v.replace(',', '.');
-    const num = parseFloat(v);
-    return Number.isFinite(num) ? num : null;
+    if(!s) return null;
+    const m=String(s).match(/[\d.,]+/); if(!m) return null;
+    let v=m[0];
+    if(v.includes(',') && v.includes('.')) v=v.replace(/\./g,'').replace(',', '.');
+    else if(v.includes(',')) v=v.replace(',', '.');
+    const n=parseFloat(v);
+    return Number.isFinite(n)? n : null;
   }
+
+  // Accent-insensitive “Pokémon Center” & lot/display detection (works on ASCII)
+  const LOT_WORDS = ['sealed case','case','cases','lot','bundle','display','boxset','collection box','display box','booster display'];
+  function hasPokemonCenter(str){ return normalize(str).includes('pokemon center'); }
+  function hasLotWords(str){ const n=normalize(str); return LOT_WORDS.some(w => n.includes(w)); }
 
   /* ----------------------- GLOBAL COMPARISON ----------------------- */
   async function compareWithGlobal(){
     try{
       const r = await fetch(new URL('api/sealed-products', BASE_URL));
-      if (!r.ok) return;
+      if(!r.ok) return;
       const globalItems = await r.json();
 
       const greekTitle = currentItem.title || '';
       const greekType  = detectType(greekTitle);
-      if (!greekType) return;
+      if(!greekType) return;
 
       const greekCore  = coreTokens(greekTitle);
-      if (greekCore.length < 1) return;
+      if(greekCore.length < 1) return;
 
-      // Set phrase requirement: if we have any bigrams beyond generic/type words, require overlap
+      // require a set phrase overlap when present (e.g., "destined rivals", "obsidian flames", "black bolt", …)
       const greekPhrases = bigrams(baseTokens(greekTitle))
-        .filter(p=>{
-          const parts = p.split(' ');
-          return parts.every(w => !GENERIC_SERIES.has(w) && !TYPE_WORDS.has(w));
-        });
+        .filter(p => p.split(' ').every(w => !GENERIC_SERIES.has(w) && !TYPE_WORDS.has(w)));
 
-      const greekIsPC   = POKEMON_CENTER_RE.test(greekTitle);
-      const greekHasLot = OUTLIER_WORDS_RE.test(greekTitle);
+      const greekIsPC   = hasPokemonCenter(greekTitle);
+      const greekHasLot = hasLotWords(greekTitle);
 
       let best=null, bestScore=0, bestStrong=0;
 
-      for (const gi of globalItems){
+      for(const gi of globalItems){
         const allText = `${gi.item_title||''} ${gi.set_name||''}`.trim();
         const giType  = detectType(allText);
-        if (giType !== greekType) continue;
+        if(giType !== greekType) continue;
 
-        const giIsPC   = POKEMON_CENTER_RE.test(allText);
-        const giHasLot = OUTLIER_WORDS_RE.test(allText);
-        if (giIsPC !== greekIsPC) continue;     // PC vs non-PC must match
-        if (giHasLot !== greekHasLot) continue; // case/lot vs single must match
+        const giIsPC   = hasPokemonCenter(allText);
+        const giHasLot = hasLotWords(allText);
+        if(giIsPC !== greekIsPC) continue;     // PC vs non-PC must match
+        if(giHasLot !== greekHasLot) continue; // case/lot/display/bundle must match
 
         const giCore = coreTokens(allText);
-        if (!giCore.length) continue;
+        if(!giCore.length) continue;
 
-        // phrase gate — if Greek has a set phrase (e.g., "black bolt"), require overlap
+        // phrase gate: if Greek contains any set phrase, candidate must share at least one
         const giPhrases = bigrams(baseTokens(allText))
-          .filter(p=>{
-            const parts=p.split(' ');
-            return parts.every(w=>!GENERIC_SERIES.has(w) && !TYPE_WORDS.has(w));
-          });
-        if (greekPhrases.length){
-          const phraseHit = greekPhrases.some(p => giPhrases.includes(p));
-          if (!phraseHit) continue;
-        }
+          .filter(p => p.split(' ').every(w => !GENERIC_SERIES.has(w) && !TYPE_WORDS.has(w)));
+        if(greekPhrases.length && !greekPhrases.some(p => giPhrases.includes(p))) continue;
 
         const {score, inter} = jaccard(greekCore, giCore);
         const strong = inter.filter(t => t.length >= 5).length;
-        if (score > bestScore || (score === bestScore && strong > bestStrong)){
+
+        if(score > bestScore || (score === bestScore && strong > bestStrong)){
           best = gi; bestScore = score; bestStrong = strong;
         }
       }
 
-      if (!best) return;
+      if(!best) return;
 
-      // Accept if similar enough OR share many strong overlaps
+      // accept if reasonably similar OR many strong overlaps
       const bestCore = coreTokens(`${best.item_title||''} ${best.set_name||''}`);
       const { inter } = jaccard(greekCore, bestCore);
       const strongInter = inter.filter(t => t.length >= 5);
       const similarEnough = (bestScore >= 0.50) || (strongInter.length >= 2 && inter.length >= 3);
-      if (!similarEnough) return;
+      if(!similarEnough) return;
 
-      // Prices
-      const greekPrice  = parseEuro(currentItem.price);
-      const globalPrice = (typeof best.price_eur === 'number' && best.price_eur > 0)
-        ? best.price_eur
-        : (typeof best.price_usd === 'number' && best.price_usd > 0 ? best.price_usd * 0.92 : parseEuro(best.raw_price));
-      if (!greekPrice || !globalPrice || globalPrice <= 0) return;
+      // prices
+      let globalPrice = Number(best.price_eur);
+      if(!Number.isFinite(globalPrice) || globalPrice<=0){
+        const usd = Number(best.price_usd);
+        globalPrice = (Number.isFinite(usd) && usd>0) ? usd*0.92 : parseEuro(best.raw_price);
+      }
+      const greekPrice = parseEuro(currentItem.price);
+      if(!greekPrice || !globalPrice || globalPrice<=0) return;
 
-      // Sanity check by type (avoid ETB vs case/lot mismatches that slipped through)
-      if (!pricePlausible(greekType, globalPrice)) return;
+      // sanity check by type (avoid ETB vs case/lot or wrong product)
+      if(!pricePlausible(greekType, globalPrice)) return;
 
-      // If the % gap is extreme, require very strong match
-      const diffPct = ((greekPrice - globalPrice) / globalPrice) * 100;
+      // If % gap is extreme, demand near-exact match
+      const diffPct = ((greekPrice - globalPrice)/globalPrice)*100;
       const absPct  = Math.abs(diffPct);
-      if (absPct > 60 && bestScore < 0.70 && !(strongInter.length >= 3 && inter.length >= 4)) return;
+      if(absPct > 60 && bestScore < 0.70 && !(strongInter.length >= 3 && inter.length >= 4)) return;
 
       const direction = diffPct >= 0 ? 'higher' : 'lower';
       const cls = diffPct >= 0 ? 'higher' : 'lower';
