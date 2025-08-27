@@ -1,4 +1,4 @@
-# Force-refresh deployment 2025-08-27-v7-IMGHD
+# Force-refresh deployment 2025-08-27-v8-COMPARE
 import sys, re, os, csv, glob, random, threading
 from flask import Flask, render_template, request, jsonify
 from datetime import datetime, timedelta
@@ -26,6 +26,7 @@ except ImportError:
 app = Flask(__name__, template_folder="templates")
 
 # ---- Config ----
+# Allow overriding the FX rate via env; defaults to a conservative 0.92 EUR/USD.
 USD_TO_EUR = float(os.environ.get("USD_TO_EUR", "0.86"))
 
 # ---------- Helpers ----------
@@ -44,33 +45,23 @@ def normalize_title_for_history(title):
 
 # === Sealed Products (HD images + EUR) ===
 def _upgrade_image(url: str, level: int = 1) -> str:
-    """Return a higher-res image URL when we recognize the host.
-    level=1 -> HD, level=2 -> XHD (bigger)."""
     if not url:
         return url
     try:
-        # --- PriceCharting ---
-        # As requested, we replace the low-res /60.jpg with high-res /1600.jpg
         if "pricecharting.com" in url:
             return url.replace("/60.jpg", "/1600.jpg")
 
-        # --- eBay ---
-        # Common forms: .../s-l64.jpg, /s-l140.jpg, /s-l225.jpg, /s-l500.jpg
         if "i.ebayimg.com" in url:
             size = 1200 if level >= 2 else 800
             url = re.sub(r"/s-l\d+(\.\w+)(\?.*)?$", fr"/s-l{size}\1", url)
 
-        # --- TCGplayer ---
-        # product-images.tcgplayer.com/fit-in/437x437/... -> bump box
         if "tcgplayer" in url:
             box = 1000 if level >= 2 else 700
             url = re.sub(r"/fit-in/\d+x\d+/", fr"/fit-in/{box}x{box}/", url)
-            # width/quality query params (several variants in the wild)
             url = re.sub(r"([?&])(w|width)=\d+", fr"\1\2={box}", url)
             url = re.sub(r"([?&])(q|quality)=\d+", r"\g<1>\2=90", url)
             url = url.replace("/thumbnail/", "/main/")
 
-        # Some CDNs use "..._thumb.jpg" -> try plain ".jpg"
         url = re.sub(r"(_thumb)(\.\w+)$", r"\2", url)
     except Exception:
         pass
@@ -101,9 +92,9 @@ def _normalize_sealed_row(row: dict) -> dict:
     image_url = norm.get("image_url") or norm.get("image") or norm.get("img_url") or norm.get("img")
 
     usd = _parse_price_to_float(raw_price) or 0.0
-    eur = round(usd * USD_TO_EUR, 2)
+    # If the file already contains EUR, take it; else convert USD->EUR.
+    eur = _parse_price_to_float(norm.get("price_eur") or "") or round(usd * USD_TO_EUR, 2)
 
-    # build HD + XHD variants
     img_hd = _upgrade_image(image_url, level=1) or image_url
     img_xhd = _upgrade_image(image_url, level=2) or img_hd
 
@@ -381,8 +372,6 @@ def api_tcg_random_trending():
                 cards = list(csv.DictReader(f))
         except Exception as e:
             print(f"Error reading CSV file {latest_file}: {e}")
-    
-    # Corrected line: wrap the list in a dictionary with a "cards" key
     return jsonify({"cards": random.sample(cards, 10) if len(cards) > 10 else cards})
 
 if __name__ == "__main__":
