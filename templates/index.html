@@ -176,6 +176,8 @@
       width: 100%;
       margin-top: 10px;
     }
+    .nav-btn span { display: none; }
+    .nav-btn { padding: 10px 12px; }
     .grid{
         grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
         gap: 10px;
@@ -201,9 +203,11 @@
         <h1>POKEGR</h1>
     </a>
     <div class="nav-buttons">
+        <a href="/" class="nav-btn"><i class="fas fa-store"></i> <span>Marketplace</span></a>
         <a href="/tcg-tracker" class="nav-btn"><i class="fas fa-search"></i> <span>TCG Tracker</span></a>
         <a href="/top100" class="nav-btn"><i class="fas fa-fire"></i> <span>Top 100</span></a>
         <a href="/wallpapers" class="nav-btn"><i class="fas fa-image"></i> <span>Wallpapers</span></a>
+        <a href="/global-prices" class="nav-btn"><i class="fas fa-globe"></i> <span>Global Prices</span></a>
     </div>
   </header>
 
@@ -320,20 +324,14 @@
 
   {% endif %}
 </div>
-
-
+<!-- ... (JavaScript is unchanged) ... -->
 <script>
   const BASE_URL = '{{ base_url }}';
-
-  // --- SHARED FUNCTIONS (used by both pages) ---
   function cardHTML(p) {
       const safeTitle = (p.title || '').replace(/"/g, '&quot;');
       const itemParams = new URLSearchParams({
-          title: p.title || '',
-          price: p.price || '',
-          image_url: p.image_url || '',
-          url: p.url || '',
-          source: p.source || ''
+          title: p.title || '', price: p.price || '', image_url: p.image_url || '',
+          url: p.url || '', source: p.source || ''
       }).toString();
       const detailUrl = `${BASE_URL}item?${itemParams}`;
       return `
@@ -348,81 +346,50 @@
           </div>
         </div>`;
   }
-  
   async function fetchHistory(title) {
       const url = new URL(`api/price-history?title=${encodeURIComponent(title)}`, BASE_URL);
       const response = await fetch(url);
-      if (!response.ok) {
-          throw new Error('Failed to fetch price history');
-      }
+      if (!response.ok) { throw new Error('Failed to fetch price history'); }
       return await response.json();
   }
-  
   function processDataForChart(data, months) {
-      const now = new Date();
-      const cutoff = new Date();
+      const now = new Date(); const cutoff = new Date();
       cutoff.setMonth(now.getMonth() - months);
       const filtered = data.filter(d => new Date(d.date) >= cutoff);
-      if (months === 1) {
-          return filtered.map(d => ({ x: d.date, y: d.price }));
-      } else {
+      if (months === 1) { return filtered.map(d => ({ x: d.date, y: d.price })); } 
+      else {
           const monthly = {};
           filtered.forEach(d => {
               const month = d.date.substring(0, 7);
-              if (!monthly[month]) {
-                  monthly[month] = { sum: 0, count: 0 };
-              }
-              monthly[month].sum += d.price;
-              monthly[month].count++;
+              if (!monthly[month]) { monthly[month] = { sum: 0, count: 0 }; }
+              monthly[month].sum += d.price; monthly[month].count++;
           });
-          return Object.keys(monthly).map(month => ({
-              x: `${month}-01`,
-              y: monthly[month].sum / monthly[month].count
-          }));
+          return Object.keys(monthly).map(month => ({ x: `${month}-01`, y: monthly[month].sum / monthly[month].count }));
       }
   }
-  
   function drawChart(canvasEl, data, timeframe) {
       return new Chart(canvasEl, {
           type: 'line',
-          data: {
-              datasets: [{
-                  label: 'Price (€)',
-                  data: processDataForChart(data, timeframe),
-                  borderColor: 'rgba(255, 204, 0, 1)',
-                  backgroundColor: 'rgba(255, 204, 0, 0.2)',
+          data: { datasets: [{
+                  label: 'Price (€)', data: processDataForChart(data, timeframe),
+                  borderColor: 'rgba(255, 204, 0, 1)', backgroundColor: 'rgba(255, 204, 0, 0.2)',
                   tension: 0.1, fill: true, pointBackgroundColor: 'rgba(255, 204, 0, 1)', pointRadius: 4,
               }]
           },
           options: {
               responsive: true, maintainAspectRatio: false,
               scales: {
-                  x: {
-                      type: 'time', time: { unit: timeframe === 1 ? 'day' : 'month' },
-                      ticks: { color: '#a7b6d6' }, grid: { color: 'rgba(255,255,255,0.1)' }
-                  },
-                  y: {
-                      ticks: { color: '#a7b6d6', callback: value => `€${value.toFixed(2)}` },
-                      grid: { color: 'rgba(255,255,255,0.1)' }
-                  }
+                  x: { type: 'time', time: { unit: timeframe === 1 ? 'day' : 'month' }, ticks: { color: '#a7b6d6' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                  y: { ticks: { color: '#a7b6d6', callback: value => `€${value.toFixed(2)}` }, grid: { color: 'rgba(255,255,255,0.1)' } }
               },
-              plugins: {
-                  legend: { display: false },
-                  tooltip: { backgroundColor: '#16223a', padding: 10, cornerRadius: 8 }
-              }
+              plugins: { legend: { display: false }, tooltip: { backgroundColor: '#16223a', padding: 10, cornerRadius: 8 } }
           }
       });
   }
 </script>
-
 {% if item is defined %}
 <script>
-    // --- ITEM DETAIL PAGE SCRIPT ---
-    const currentItem = {
-      title: {{ item.title | tojson }},
-      url: {{ item.url | tojson }}
-    };
-    
+    const currentItem = { title: {{ item.title | tojson }}, url: {{ item.url | tojson }} };
     const chartCanvas = document.getElementById('priceChart');
     const chartLoader = document.getElementById('chartLoader');
     const noHistoryMsg = document.getElementById('noHistoryMsg');
@@ -430,41 +397,21 @@
     const relatedGrid = document.getElementById('relatedGrid');
     const relatedLoader = document.getElementById('relatedLoader');
     const priceTrendSummaryEl = document.getElementById('priceTrendSummary');
-    let priceChart = null;
-    let currentHistoryData = [];
-
+    let priceChart = null; let currentHistoryData = [];
     function calculateAndDisplayTrend(data) {
-        const now = new Date();
-        const thirtyDaysAgo = new Date(new Date().setDate(now.getDate() - 30));
-        
+        const now = new Date(); const thirtyDaysAgo = new Date(new Date().setDate(now.getDate() - 30));
         const recentData = data.filter(d => new Date(d.date) >= thirtyDaysAgo);
-        if (recentData.length < 2) {
-            priceTrendSummaryEl.textContent = "Price has been stable recently.";
-            return;
-        }
-
-        const oldestEntry = recentData[0];
-        const latestEntry = recentData[recentData.length - 1];
-        
-        const oldestPrice = oldestEntry.price;
-        const latestPrice = latestEntry.price;
-        
-        const change = latestPrice - oldestPrice;
-        const percentChange = (change / oldestPrice) * 100;
-        
+        if (recentData.length < 2) { priceTrendSummaryEl.textContent = "Price has been stable recently."; return; }
+        const oldestEntry = recentData[0]; const latestEntry = recentData[recentData.length - 1];
+        const oldestPrice = oldestEntry.price; const latestPrice = latestEntry.price;
+        const change = latestPrice - oldestPrice; const percentChange = (change / oldestPrice) * 100;
         const oldestDate = new Date(oldestEntry.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
-
         let summaryText = '';
-        if (Math.abs(percentChange) < 2) {
-            summaryText = 'Overall, the price has shown stability.';
-        } else if (percentChange > 0) {
-            summaryText = `An <span class="increase">${percentChange.toFixed(1)}% increase</span> since ${oldestDate}.`;
-        } else {
-            summaryText = `A <span class="decrease">${Math.abs(percentChange).toFixed(1)}% decrease</span> since ${oldestDate}.`;
-        }
+        if (Math.abs(percentChange) < 2) { summaryText = 'Overall, the price has shown stability.'; } 
+        else if (percentChange > 0) { summaryText = `An <span class="increase">${percentChange.toFixed(1)}% increase</span> since ${oldestDate}.`; } 
+        else { summaryText = `A <span class="decrease">${Math.abs(percentChange).toFixed(1)}% decrease</span> since ${oldestDate}.`; }
         priceTrendSummaryEl.innerHTML = summaryText;
     }
-
     async function initializeDetailPage() {
         try {
             currentHistoryData = await fetchHistory(currentItem.title);
@@ -479,29 +426,22 @@
             }
         } catch (e) {
             console.error("Failed to load history", e);
-            chartLoader.style.display = 'none';
-            noHistoryMsg.textContent = 'Could not load price history.';
+            chartLoader.style.display = 'none'; noHistoryMsg.textContent = 'Could not load price history.';
             priceTrendSummaryEl.textContent = "Could not load price trend.";
         }
-
         try {
             const params = new URLSearchParams({ title: currentItem.title, url: currentItem.url });
             const relatedUrl = new URL(`api/related-products?${params.toString()}`, BASE_URL);
-            const r = await fetch(relatedUrl);
-            const data = await r.json();
+            const r = await fetch(relatedUrl); const data = await r.json();
             relatedLoader.style.display = 'none';
-            if (data.items && data.items.length) {
-              relatedGrid.innerHTML = data.items.map(cardHTML).join('');
-            } else {
-              relatedGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">No related items found.</p>';
-            }
+            if (data.items && data.items.length) { relatedGrid.innerHTML = data.items.map(cardHTML).join(''); } 
+            else { relatedGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">No related items found.</p>'; }
         } catch(e) {
             console.error("Failed to load related items", e);
             relatedLoader.style.display = 'none';
             relatedGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">Error loading related items.</p>';
         }
     }
-
     timeframeBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             if (!currentHistoryData.length) return;
@@ -512,24 +452,19 @@
             priceChart = drawChart(chartCanvas, currentHistoryData, range);
         });
     });
-
     document.addEventListener('DOMContentLoaded', initializeDetailPage);
 </script>
 {% endif %}
-
 <script>
-    // --- SEARCH SCRIPT (runs on both pages) ---
     const qInput = document.getElementById('q');
     const btnSearch = document.getElementById('btnSearch');
     const suggestBox = document.getElementById('suggest');
-
     async function showSuggest(){
       const q = qInput.value.trim();
       if(q.length<2){ suggestBox.style.display='none'; return; }
       try{
         const suggestUrl = new URL(`api/suggest?q=${encodeURIComponent(q)}`, BASE_URL);
-        const r = await fetch(suggestUrl);
-        const data = await r.json();
+        const r = await fetch(suggestUrl); const data = await r.json();
         const items = (data.items || []).slice(0, 12);
         if(!items.length){ suggestBox.style.display='none'; return; }
         suggestBox.innerHTML = items.map(it=>`
@@ -541,150 +476,91 @@
         suggestBox.style.display='block';
       }catch(e){ console.error(e); }
     }
-
     function doSearchFromInput(){
       const query = qInput.value.trim();
       if (!query) return;
-      // Redirect to the homepage with the search query
       window.location.href = `${BASE_URL}?q=${encodeURIComponent(query)}`;
     }
-
     if (btnSearch && qInput) {
         btnSearch.onclick = doSearchFromInput;
-        qInput.addEventListener('keydown', (e)=>{ 
-            if(e.key==='Enter'){ 
-                e.preventDefault(); 
-                doSearchFromInput(); 
-            } 
-        });
+        qInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); doSearchFromInput(); } });
         qInput.addEventListener('input', showSuggest);
         document.addEventListener('click', (e)=>{ if(!suggestBox.contains(e.target) && e.target!==qInput){ suggestBox.style.display='none'; } });
         suggestBox.addEventListener('click', (e)=>{ 
-            const item = e.target.closest('.sug-item'); 
-            if(!item) return; 
+            const item = e.target.closest('.sug-item'); if(!item) return; 
             qInput.value = item.getAttribute('data-title') || qInput.value; 
-            suggestBox.style.display='none'; 
-            doSearchFromInput();
+            suggestBox.style.display='none'; doSearchFromInput();
         });
     }
 </script>
-
 {% if item is not defined %}
 <script>
-    // --- SEARCH PAGE SCRIPT (only runs on the main page) ---
     const grid = document.getElementById('grid');
     const sortSel = document.getElementById('sort');
-    
     const loadMoreBtn = document.getElementById('loadMore');
     const loadingSpinner = document.getElementById('loadingSpinner');
     const marketStatusContainer = document.getElementById('marketStatus');
     const marketGrid = document.getElementById('marketGrid');
     const toggleMarketStatusBtn = document.getElementById('toggleMarketStatusBtn');
-
-    let currentQuery = '';
-    let currentPage = 1;
-    let isLoading = false;
-    let lastHasMore = false;
-    let marketStatusLoaded = false;
-    let isMarketStatusFetching = false;
-
+    let currentQuery = ''; let currentPage = 1; let isLoading = false;
+    let lastHasMore = false; let marketStatusLoaded = false; let isMarketStatusFetching = false;
     function render(items, append=false){
       if(!append){ grid.innerHTML=''; }
-      if (items && items.length){
-        grid.insertAdjacentHTML('beforeend', items.map(cardHTML).join(''));
-      }
-      loadingSpinner.style.display = 'none';
-      isLoading = false;
+      if (items && items.length){ grid.insertAdjacentHTML('beforeend', items.map(cardHTML).join('')); }
+      loadingSpinner.style.display = 'none'; isLoading = false;
       loadMoreBtn.style.display = lastHasMore ? 'inline-block' : 'none';
     }
-
     async function fetchMarketStatus() {
-        if (isMarketStatusFetching) return;
-        isMarketStatusFetching = true;
+        if (isMarketStatusFetching) return; isMarketStatusFetching = true;
         marketGrid.innerHTML = '<div class="spinner" style="display: block; margin: 20px auto;"></div>';
         try {
             const url = new URL('api/market-status', BASE_URL);
             const response = await fetch(url);
-            if (!response.ok) {
-                marketGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">Could not load market status.</p>';
-                return;
-            }
+            if (!response.ok) { marketGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">Could not load market status.</p>'; return; }
             const data = await response.json();
             if (data && data.length) {
                 marketGrid.innerHTML = data.map(item => {
                     let searchTerm = item.category;
-                    if (searchTerm.endsWith('s')) {
-                        searchTerm = searchTerm.slice(0, -1);
-                    }
-                    return `
-                    <a href="#" class="market-tag status-${item.status}" data-category="${searchTerm}">
-                        ${item.category} <span class="explanation">${item.explanation}</span>
-                    </a>`;
+                    if (searchTerm.endsWith('s')) { searchTerm = searchTerm.slice(0, -1); }
+                    return `<a href="#" class="market-tag status-${item.status}" data-category="${searchTerm}">${item.category} <span class="explanation">${item.explanation}</span></a>`;
                 }).join('');
-            } else {
-                marketGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">No market status data available.</p>';
-            }
+            } else { marketGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">No market status data available.</p>'; }
             marketStatusLoaded = true;
         } catch (e) {
             console.error("Failed to fetch market status:", e);
             marketGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">Error loading market status.</p>';
-        } finally {
-            isMarketStatusFetching = false;
-        }
+        } finally { isMarketStatusFetching = false; }
     }
-
     async function fetchPage(page=1, append=false) {
-      if (isLoading) return;
-      isLoading = true;
-      loadingSpinner.style.display = 'block';
-      loadMoreBtn.style.display = 'none';
+      if (isLoading) return; isLoading = true;
+      loadingSpinner.style.display = 'block'; loadMoreBtn.style.display = 'none';
       const isHomepage = !currentQuery.trim();
-      const path = isHomepage 
-        ? `api/home?sort=${encodeURIComponent(sortSel.value)}&page=${page}`
-        : `api/search?q=${encodeURIComponent(currentQuery)}&page=${page}&sort=${encodeURIComponent(sortSel.value)}`;
+      const path = isHomepage ? `api/home?sort=${encodeURIComponent(sortSel.value)}&page=${page}` : `api/search?q=${encodeURIComponent(currentQuery)}&page=${page}&sort=${encodeURIComponent(sortSel.value)}`;
       const fullUrl = new URL(path, BASE_URL);
       try {
-          const r = await fetch(fullUrl);
-          const data = await r.json();
-          lastHasMore = !!data.has_more;
-          render(data.items || [], append);
-          currentPage = page;
-      } catch (e) {
-          console.error("Fetch failed:", e);
-          isLoading = false;
-      }
+          const r = await fetch(fullUrl); const data = await r.json();
+          lastHasMore = !!data.has_more; render(data.items || [], append); currentPage = page;
+      } catch (e) { console.error("Fetch failed:", e); isLoading = false; }
     }
-    
     loadMoreBtn.addEventListener('click', () => fetchPage(currentPage + 1, true));
     sortSel.onchange = () => { currentQuery = qInput.value.trim(); fetchPage(1, false); };
-
     marketGrid.addEventListener('click', (e) => {
-        e.preventDefault();
-        const tag = e.target.closest('.market-tag');
+        e.preventDefault(); const tag = e.target.closest('.market-tag');
         if (tag && tag.dataset.category) {
-            qInput.value = tag.dataset.category;
-            currentQuery = qInput.value.trim();
-            fetchPage(1, false);
-            window.scrollTo({ top: qInput.offsetTop - 20, behavior: 'smooth' });
+            qInput.value = tag.dataset.category; currentQuery = qInput.value.trim();
+            fetchPage(1, false); window.scrollTo({ top: qInput.offsetTop - 20, behavior: 'smooth' });
         }
     });
-
     toggleMarketStatusBtn.addEventListener('click', () => {
         const isVisible = marketStatusContainer.style.display === 'block';
         marketStatusContainer.style.display = isVisible ? 'none' : 'block';
-        if (!isVisible && !marketStatusLoaded) {
-            fetchMarketStatus();
-        }
+        if (!isVisible && !marketStatusLoaded) { fetchMarketStatus(); }
     });
-
     document.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
         const queryFromUrl = urlParams.get('q');
-        if (queryFromUrl) {
-            qInput.value = queryFromUrl;
-            currentQuery = queryFromUrl;
-        }
-      fetchPage(1, false);
+        if (queryFromUrl) { qInput.value = queryFromUrl; currentQuery = queryFromUrl; }
+        fetchPage(1, false);
     });
 </script>
 {% endif %}
