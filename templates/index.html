@@ -543,31 +543,32 @@
     }
 
     // ----- 30-day trend for Greek history -----
-    function calculateAndDisplayTrend(data) {
-        const now = new Date();
-        const thirtyDaysAgo = new Date(new Date().setDate(now.getDate() - 30));
-        const recentData = data.filter(d => new Date(d.date) >= thirtyDaysAgo);
-        if (recentData.length < 2) {
-            priceTrendSummaryEl.textContent = "Price has been stable recently.";
-            return;
-        }
-        const oldestEntry = recentData[0];
-        the latestEntry = recentData[recentData.length - 1];
-        const oldestPrice = oldestEntry.price;
-        const latestPrice = latestEntry.price;
-        const change = latestPrice - oldestPrice;
-        const percentChange = (change / oldestPrice) * 100;
-        const oldestDate = new Date(oldestEntry.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
-        let summaryText = '';
-        if (Math.abs(percentChange) < 2) {
-            summaryText = 'Overall, the price has shown stability.';
-        } else if (percentChange > 0) {
-            summaryText = `An <span class="increase">${percentChange.toFixed(1)}% increase</span> since ${oldestDate}.`;
-        } else {
-            summaryText = `A <span class="decrease">${Math.abs(percentChange).toFixed(1)}% decrease</span> since ${oldestDate}.`;
-        }
-        priceTrendSummaryEl.innerHTML = summaryText;
-    }
+  function calculateAndDisplayTrend(data) {
+      const now = new Date();
+      const thirtyDaysAgo = new Date(new Date().setDate(now.getDate() - 30));
+      const recentData = data.filter(d => new Date(d.date) >= thirtyDaysAgo);
+      if (recentData.length < 2) {
+          priceTrendSummaryEl.textContent = "Price has been stable recently.";
+          return;
+      }
+      const oldestEntry = recentData[0];
+      const latestEntry = recentData[recentData.length - 1];  // <-- fixed line
+      const oldestPrice = oldestEntry.price;
+      const latestPrice = latestEntry.price;
+      const change = latestPrice - oldestPrice;
+      const percentChange = (change / oldestPrice) * 100;
+      const oldestDate = new Date(oldestEntry.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+
+      let summaryText = '';
+      if (Math.abs(percentChange) < 2) {
+          summaryText = 'Overall, the price has shown stability.';
+      } else if (percentChange > 0) {
+          summaryText = `An <span class="increase">${percentChange.toFixed(1)}% increase</span> since ${oldestDate}.`;
+      } else {
+          summaryText = `A <span class="decrease">${Math.abs(percentChange).toFixed(1)}% decrease</span> since ${oldestDate}.`;
+      }
+      priceTrendSummaryEl.innerHTML = summaryText;
+  }
 
     async function initializeDetailPage() {
         // Run Greek-vs-Global comparison immediately; it will only show text if we get a strong match.
