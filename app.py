@@ -193,15 +193,18 @@ def api_global_related():
         return jsonify({"items": []})
 
     # Improved keyword extraction
-    stopwords = {'pokemon', 'pokémon', 'tcg', 'sealed', 'official', 'english', 'card', 'cards'}
-    type_words = {'elite', 'trainer', 'box', 'etb', 'booster', 'pack', 'bundle', 'display', 'case', 'tin', 'deck', 'sleeves', 'binder', 'collection', 'blister'}
-    
-    # Extract words, keep numbers like '151'
-    title_tokens = re.findall(r'[a-z0-9]+', title)
-    search_keywords = {word for word in title_tokens if word not in stopwords and word not in type_words and not word.isdigit()}
-    # Add back important numbers
-    search_keywords.update({word for word in title_tokens if word.isdigit() and len(word) > 2})
+    def get_keywords(text):
+        stopwords = {'pokemon', 'pokémon', 'tcg', 'sealed', 'official', 'english', 'card', 'cards', 'and'}
+        type_words = {'elite', 'trainer', 'box', 'etb', 'booster', 'pack', 'bundle', 'display', 'case', 'tin', 'deck', 'sleeves', 'binder', 'collection', 'blister'}
+        # Find all alphanumeric sequences
+        tokens = set(re.findall(r'[a-z0-9]+', text))
+        # Remove stopwords and common type words, but keep important specific terms
+        keywords = tokens - stopwords - type_words
+        return keywords
 
+    search_keywords = get_keywords(title)
+    if not search_keywords:
+        return jsonify({"items": []})
 
     candidates = [
         os.path.join(app.root_path, "sealed_item_prices", "tcg_sealed_prices.csv"),
@@ -212,32 +215,40 @@ def api_global_related():
     if not csv_path:
         return jsonify({"items": []})
 
-    matches = []
+    scored_matches = []
     try:
         with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
             reader = csv.DictReader(f)
             for row in reader:
                 normalized_row = _normalize_sealed_row(row)
                 item_text = (normalized_row.get("item_title", "") + " " + normalized_row.get("set_name", "")).lower()
+                item_keywords = get_keywords(item_text)
                 
-                # Score based on keyword overlap
-                item_words = set(re.findall(r'[a-z0-9]+', item_text))
-                common_words = search_keywords.intersection(item_words)
+                common_words = search_keywords.intersection(item_keywords)
+                score = len(common_words)
                 
-                if len(common_words) >= len(search_keywords) * 0.75 and len(common_words) > 1: # Require good overlap
-                    # Format for frontend card rendering
-                    matches.append({
-                        "title": normalized_row.get("item_title"),
-                        "price": f"€{normalized_row.get('price_eur', 0.0):.2f}",
-                        "image_url": normalized_row.get("image_url_hd"),
-                        "url": f"https://www.ebay.com/sch/i.html?_nkw={normalized_row.get('item_title', '')} Pokemon", # Example URL
-                        "source": "" # Important: identify as non-local
-                    })
+                if score > 1: # Require at least 2 matching keywords
+                    scored_matches.append((score, normalized_row))
+
     except Exception as e:
         print(f"Error in /api/global-related: {e}")
         return jsonify({"error": "Failed to process related items."}), 500
 
-    return jsonify({"items": matches[:8]}) # Limit to 8 results
+    # Sort by score (descending)
+    scored_matches.sort(key=lambda x: x[0], reverse=True)
+    
+    # Format top results for frontend
+    final_items = []
+    for score, item in scored_matches[:8]:
+        final_items.append({
+            "title": item.get("item_title"),
+            "price": f"€{item.get('price_eur', 0.0):.2f}",
+            "image_url": item.get("image_url_hd"),
+            "url": f"https://www.ebay.com/sch/i.html?_nkw={item.get('item_title', '')} Pokemon"
+            # NOTE: No "source" key is included, so the frontend treats it as an external link
+        })
+
+    return jsonify({"items": final_items})
 
 
 # ---- Market / history / other existing routes (unchanged) ----
