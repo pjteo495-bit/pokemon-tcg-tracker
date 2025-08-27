@@ -109,8 +109,43 @@ def top_100_page():
             print(f"Error reading CSV file {latest_file}: {e}")
     return render_template("top100.html", cards=cards)
 
+@app.route("/sealed-products")
+def sealed_products_page():
+    """Renders the sealed products page."""
+    return render_template("sealed_products.html")
+
 
 # --- API Routes ---
+@app.route("/api/sealed-products")
+def api_sealed_products():
+    """Provides a list of sealed products from the CSV file."""
+    sealed_dir = "sealed_item_prices"
+    latest_file = None
+    latest_time = 0
+    if os.path.isdir(sealed_dir):
+        for item in os.listdir(sealed_dir):
+            if item.lower().endswith('.csv'):
+                item_path = os.path.join(sealed_dir, item)
+                try:
+                    mtime = os.path.getmtime(item_path)
+                    if mtime > latest_time:
+                        latest_time = mtime
+                        latest_file = item_path
+                except Exception:
+                    continue
+    
+    products = []
+    if latest_file:
+        try:
+            with open(latest_file, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                products = list(reader)
+        except Exception as e:
+            print(f"Error reading sealed products CSV: {e}")
+
+    return jsonify(products)
+
+
 @app.route("/api/market-status")
 def api_market_status():
     """Analyzes price history to provide a market overview."""
