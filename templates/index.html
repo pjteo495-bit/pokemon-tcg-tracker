@@ -610,7 +610,7 @@
       if(!pricePlausible(greekType, globalPrice)) return;
 
       // If % gap is extreme, demand near-exact match
-      const diffPct = ((greekPrice - globalPrice)/globalPrice)*100;
+      const diffPct = ((grPrice - pcPrice) / pcPrice) * 100;
       const absPct  = Math.abs(diffPct);
       if(absPct > 60 && bestScore < 0.70 && !(strongInter.length >= 3 && inter.length >= 4)) return;
 
