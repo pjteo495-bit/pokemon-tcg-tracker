@@ -35,6 +35,7 @@
     font-family:'Poppins', sans-serif; 
     min-height:100vh; 
   }
+  main.page-content { overflow-x: hidden; }
   .wrap { max-width:1200px; margin:0 auto; padding:22px 16px 42px; }
   
   .header {
@@ -132,6 +133,7 @@
       font-size: 18px; padding: 15px 0; border-bottom: 1px solid var(--border);
   }
   .mobile-nav a i { margin-right: 10px; }
+  .header-spacer { display: none; }
 
   @media (max-width: 768px) {
     .nav-buttons { display: none; }
@@ -139,9 +141,19 @@
         display: block;
         background: none; border: none; color: var(--text);
         font-size: 24px; cursor: pointer;
+        flex: 0 0 40px;
+        padding: 0;
+        text-align: left;
     }
-    .header { justify-content: space-between; width: 100%; }
-    .logo { flex-grow: 1; }
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .header-spacer {
+        display: block;
+        flex: 0 0 40px;
+    }
     .main-title { font-size: 1.8rem; }
     .card-header { flex-direction: column; gap: 20px; }
     .card-image { flex-basis: auto; max-width: 100%; }
@@ -160,43 +172,45 @@
     <a href="/wallpapers"><i class="fas fa-image"></i> Wallpapers</a>
     <a href="/global-prices"><i class="fas fa-globe"></i> Global Prices</a>
 </div>
+<main class="page-content">
+    <div class="wrap">
+      <header class="header">
+          <button class="mobile-nav-toggle" id="mobileNavOpen"><i class="fas fa-bars"></i></button>
+          <a href="/" class="logo">
+              <img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="Pokegr Logo" class="poke-ball" width="42" height="42">
+              <h1>POKEGR</h1>
+          </a>
+          <div class="header-spacer"></div>
+          <div class="nav-buttons">
+                <a href="/" class="nav-btn"><i class="fas fa-store"></i> <span>Marketplace</span></a>
+                <a href="/tcg-tracker" class="nav-btn"><i class="fas fa-search"></i> <span>TCG Tracker</span></a>
+                <a href="/top100" class="nav-btn"><i class="fas fa-fire"></i> <span>Top 100</span></a>
+                <a href="/wallpapers" class="nav-btn"><i class="fas fa-image"></i> <span>Wallpapers</span></a>
+                <a href="/global-prices" class="nav-btn"><i class="fas fa-globe"></i> <span>Global Prices</span></a>
+          </div>
+      </header>
 
-<div class="wrap">
-  <header class="header">
-      <button class="mobile-nav-toggle" id="mobileNavOpen"><i class="fas fa-bars"></i></button>
-      <a href="/" class="logo">
-          <img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="Pokegr Logo" class="poke-ball" width="42" height="42">
-          <h1>POKEGR</h1>
-      </a>
-      <div class="nav-buttons">
-            <a href="/" class="nav-btn"><i class="fas fa-store"></i> <span>Marketplace</span></a>
-            <a href="/tcg-tracker" class="nav-btn"><i class="fas fa-search"></i> <span>TCG Tracker</span></a>
-            <a href="/top100" class="nav-btn"><i class="fas fa-fire"></i> <span>Top 100</span></a>
-            <a href="/wallpapers" class="nav-btn"><i class="fas fa-image"></i> <span>Wallpapers</span></a>
-            <a href="/global-prices" class="nav-btn"><i class="fas fa-globe"></i> <span>Global Prices</span></a>
+      <div class="main-title-container">
+          <a href="/tcg-tracker" style="text-decoration: none;">
+            <h2 class="main-title">POKEGR TCG TRACKER</h2>
+          </a>
       </div>
-  </header>
 
-  <div class="main-title-container">
-      <a href="/tcg-tracker" style="text-decoration: none;">
-        <h2 class="main-title">POKEGR TCG TRACKER</h2>
-      </a>
-  </div>
+      <div class="tcg-search">
+        <i class="fas fa-search search-icon"></i>
+        <input id="tcgSearch" type="text" placeholder="Search Pokémon cards by name or number..." autocomplete="off">
+        <div id="tcgSuggest" class="suggest"></div>
+      </div>
 
-  <div class="tcg-search">
-    <i class="fas fa-search search-icon"></i>
-    <input id="tcgSearch" type="text" placeholder="Search Pokémon cards by name or number..." autocomplete="off">
-    <div id="tcgSuggest" class="suggest"></div>
-  </div>
+      <div id="randomCardsSection" class="random-cards-section">
+        <h3 style="font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 20px; text-align: center;">Maybe looking for one of these?</h3>
+        <div id="randomCardGrid" class="random-cards-grid"></div>
+      </div>
 
-  <div id="randomCardsSection" class="random-cards-section">
-    <h3 style="font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 20px; text-align: center;">Maybe looking for one of these?</h3>
-    <div id="randomCardGrid" class="random-cards-grid"></div>
-  </div>
-
-  <div id="tcgResults">
-  </div>
-</div>
+      <div id="tcgResults">
+      </div>
+    </div>
+</main>
 
 <script>
   // --- MOBILE NAV SCRIPT ---
