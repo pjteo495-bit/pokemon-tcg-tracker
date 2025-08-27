@@ -445,50 +445,74 @@
     let currentHistoryData = [];
 
     const TYPE_SYNONYMS = {
-    "boosterpack": ["boosterpack", "pack"],
-    "boosterbox": ["boosterbox", "box", "display"],
-    "elitetrainerbox": ["elitetrainerbox", "etb"],
-    "boosterbundle": ["boosterbundle", "bundle"],
-    "blister": ["blister"],
-    "collection": ["collection"],
-    "tin": ["tin"],
-    "deck": ["deck"],
-    "sleeves": ["sleeves"],
-    "binder": ["binder"]
+    boosterpack: ["boosterpack","pack"],
+    boosterbox: ["boosterbox","box","display"],  // we still block "display/case" later for ETBs
+    elitetrainerbox: ["elitetrainerbox","etb"],
+    boosterbundle: ["boosterbundle","bundle"],
+    blister: ["blister"],
+    collection: ["collection"],
+    tin: ["tin"],
+    deck: ["deck"],
+    sleeves: ["sleeves"],
+    binder: ["binder"]
   };
 
-  // common words we don't want to match on
+  // English + Greek filler words we should ignore
   const GENERIC_STOPWORDS = new Set([
     "pokemon","pokémon","tcg","sealed","official","english","greek",
-    "new","factory","original","trading","card","cards","the","a","an"
+    "new","factory","original","trading","card","cards","the","a","an",
+    // Greek
+    "και","με","σε","του","της","το","την","τα",
+    "καινούργιο","καινουριο","καινούρια","καινουρια",
+    "σφραγισμένο","σφραγισμενο","ζελατίνα","ζελατινα",
+    "εργοστασιακά","εργοστασιακα","κλειστό","κλειστο"
   ]);
 
-  function normalize(str) {
-    return (str || '')
+  const OUTLIER_WORDS_RE = /\b(case|cases|sealed case|lot|bundle|display|boxset|tournament|collection box)\b/i;
+  const POKEMON_CENTER_RE = /pokemon\s*center/i;
+
+  // Plausible EUR price ranges per type (broad on purpose)
+  const PRICE_GUARD = {
+    elitetrainerbox: [20, 200],
+    boosterbox:     [50, 500],
+    boosterpack:    [ 2,  20],
+    boosterbundle:  [15, 120],
+    blister:        [ 4,  60],
+    collection:     [15, 300],
+    tin:            [10, 150],
+    deck:           [ 5, 120],
+    sleeves:        [ 3,  40],
+    binder:         [ 5,  90]
+  };
+
+  function pricePlausible(type, eur){
+    const r = PRICE_GUARD[type];
+    if (!r) return eur > 0;
+    return eur >= r[0] && eur <= r[1];
+  }
+
+  function normalize(str){
+    return (str||'')
       .toLowerCase()
-      .replace(/[^a-z0-9\s]/g,' ')     // keep only letters/numbers/spaces
+      .replace(/[^a-z0-9\s]/g,' ')
       .replace(/\s+/g,' ')
       .trim();
   }
 
-  // Base tokenizer
-  function tokens(str) {
-    return normalize(str)
-      .split(' ')
+  function tokens(str){
+    return normalize(str).split(' ')
       .filter(Boolean)
       .filter(t => !GENERIC_STOPWORDS.has(t));
   }
 
-  // Strong tokens: ignore pure numbers and SKUs like POK113664, keep meaningful words
-  function coreTokens(str) {
+  // Core tokens: ignore pure numbers and SKU-like tokens (e.g., POK113664)
+  function coreTokens(str){
     return tokens(str).filter(t =>
-      t.length >= 3 &&
-      !/^\d+$/.test(t) &&           // pure numbers
-      !/^pok\d+$/i.test(t)          // SKUs like POK113664
+      t.length >= 3 && !/^\d+$/.test(t) && !/^pok\d+$/i.test(t)
     );
   }
 
-  function detectType(str) {
+  function detectType(str){
     const n = normalize(str).replace(/\s/g,'');
     for (const [key, vars] of Object.entries(TYPE_SYNONYMS)) {
       if (vars.some(v => n.includes(v))) return key;
@@ -496,25 +520,27 @@
     return null;
   }
 
-  function jaccard(a, b) {
+  function jaccard(a,b){
     const A = new Set(a), B = new Set(b);
-    const inter = new Set([...A].filter(x => B.has(x)));
+    const inter = [...A].filter(x => B.has(x));
     const union = new Set([...A, ...B]);
-    return union.size ? inter.size / union.size : 0;
+    return {score: union.size ? inter.length/union.size : 0, inter};
   }
 
-  function parseEuro(s) {
+  function parseEuro(s){
     if (!s) return null;
     const m = String(s).match(/[\d.,]+/);
     if (!m) return null;
     let v = m[0];
     if (v.includes(',') && v.includes('.')) v = v.replace(/\./g,'').replace(',', '.');
     else if (v.includes(',')) v = v.replace(',', '.');
-    return parseFloat(v);
+    const num = parseFloat(v);
+    return Number.isFinite(num) ? num : null;
   }
 
-    async function compareWithGlobal() {
-    try {
+  /* ---------- Comparison (replace your existing compareWithGlobal) ---------- */
+  async function compareWithGlobal(){
+    try{
       const r = await fetch(new URL('api/sealed-products', BASE_URL));
       if (!r.ok) return;
       const globalItems = await r.json();
@@ -522,54 +548,67 @@
       const greekTitle = currentItem.title || '';
       const greekType  = detectType(greekTitle);
       const greekCore  = coreTokens(greekTitle);
+      const greekIsPC  = POKEMON_CENTER_RE.test(greekTitle);
+      const greekHasCase = OUTLIER_WORDS_RE.test(greekTitle);
 
-      // Must know the product type and have a couple of meaningful tokens
       if (!greekType || greekCore.length < 2) return;
 
-      let best = null;
-      let bestScore = 0;
-      let bestStrongOverlap = 0;
+      let best = null, bestScore = 0, bestStrongOverlap = 0;
 
-      for (const gi of globalItems) {
+      for (const gi of globalItems){
         const allText = `${gi.item_title || ''} ${gi.set_name || ''}`.trim();
         const giType  = detectType(allText);
-        if (giType !== greekType) continue; // ensure same product type
+        if (giType !== greekType) continue;
+
+        // Block case/lot/display/bundle mismatches
+        const giHasCase = OUTLIER_WORDS_RE.test(allText);
+        if (giHasCase !== greekHasCase) continue;
+
+        // Block Pokémon Center mismatches
+        const giIsPC = POKEMON_CENTER_RE.test(allText);
+        if (giIsPC !== greekIsPC) continue;
 
         const globalCore = coreTokens(allText);
         if (!globalCore.length) continue;
 
-        const score = jaccard(greekCore, globalCore);
-        const inter = greekCore.filter(t => globalCore.includes(t));
-        const strongOverlap = inter.filter(t => t.length >= 5).length;
+        const {score, inter} = jaccard(greekCore, globalCore);
+        const strong = inter.filter(t => t.length >= 5).length;
 
-        // choose the match with the highest score; break ties by stronger overlap
-        if (score > bestScore || (score === bestScore && strongOverlap > bestStrongOverlap)) {
-          best = gi;
-          bestScore = score;
-          bestStrongOverlap = strongOverlap;
+        if (score > bestScore || (score === bestScore && strong > bestStrongOverlap)){
+          best = gi; bestScore = score; bestStrongOverlap = strong;
         }
       }
 
-      // Accept if similarity is good OR we share at least 2 strong words and 3 total overlaps.
       if (!best) return;
+
+      // Accept if similarity is good OR we share enough strong words
       const globalCoreBest = coreTokens(`${best.item_title || ''} ${best.set_name || ''}`);
-      const inter = greekCore.filter(t => globalCoreBest.includes(t));
-      const strongInter = inter.filter(t => t.length >= 5);
-      const accept = (bestScore >= 0.45) || (strongInter.length >= 2 && inter.length >= 3);
-      if (!accept) return;
+      const interAll = jaccard(greekCore, globalCoreBest).inter;
+      const strongInter = interAll.filter(t => t.length >= 5);
+      const similarEnough = (bestScore >= 0.50) || (strongInter.length >= 2 && interAll.length >= 3);
+      if (!similarEnough) return;
 
+      // Prices
       const greekPrice  = parseEuro(currentItem.price);
-      const globalPrice = parseFloat(best.price_eur || best.price_usd) || parseEuro(best.raw_price);
-      if (!greekPrice || !globalPrice || globalPrice <= 0) return;
+      const globalPrice = (typeof best.price_eur === 'number' && best.price_eur > 0)
+        ? best.price_eur
+        : (typeof best.price_usd === 'number' && best.price_usd > 0 ? best.price_usd * 0.92 : parseEuro(best.raw_price));
 
+      if (!greekPrice || !globalPrice || globalPrice <= 0) return;
+      if (!pricePlausible(greekType, globalPrice)) return; // filter obvious mismatches (e.g., ETB case)
+
+      // If the difference is extreme, require a very strong title match
       const diffPct = ((greekPrice - globalPrice) / globalPrice) * 100;
-      const absPct  = Math.abs(diffPct).toFixed(1);
+      const absPct  = Math.abs(diffPct);
+      if (absPct > 60 && bestScore < 0.70 && !(strongInter.length >= 3 && interAll.length >= 4)) {
+        return; // too extreme without a near-exact match -> hide
+      }
+
       const direction = diffPct >= 0 ? 'higher' : 'lower';
       const cls = diffPct >= 0 ? 'higher' : 'lower';
-
-      globalCompareEl.innerHTML = `<span class="${cls}">${absPct}% ${direction}</span> than the average global market price.`;
+      globalCompareEl.innerHTML = `<span class="${cls}">${absPct.toFixed(1)}% ${direction}</span> than the average global market price.`;
       globalCompareEl.style.display = 'block';
-    } catch (e) {
+    }catch(e){
       console.warn('Global compare failed', e);
     }
   }
