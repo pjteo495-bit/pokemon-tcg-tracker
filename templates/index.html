@@ -25,9 +25,7 @@
     --shadow:0 8px 26px rgba(0,0,0,.30);
   }
   *{box-sizing:border-box}
-  html {
-    scroll-behavior: smooth;
-  }
+  html { scroll-behavior: smooth; }
   body{
     margin:0;
     background-color: var(--bg);
@@ -54,10 +52,7 @@
     margin-bottom: 2rem;
   }
   .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
-  .poke-ball {
-    width: 42px; 
-    height: 42px;
-  }
+  .poke-ball { width: 42px; height: 42px; }
   .logo h1 { margin: 0; font-size: 28px; font-weight: 800; color: var(--text); }
   .nav-buttons { display: flex; gap: 15px; align-items: center; }
   .nav-btn {
@@ -75,11 +70,9 @@
     border-radius:18px; padding: 24px; text-align: center;
   }
   .hero-title {
-      font-size: 40px;
-      font-weight: 800;
+      font-size: 40px; font-weight: 800;
       background: linear-gradient(to right, #FFCC00, #FFDE59);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       margin: 0 0 8px 0;
   }
   .subtitle{color:rgba(255,255,255,.95);font-weight:500;letter-spacing:.4px; margin-bottom: 8px;}
@@ -145,13 +138,16 @@
   }
   .item-info h2 { font-size: 28px; margin-top: 0; line-height: 1.3; }
   .item-info .price { font-size: 32px; color: var(--poke-yellow); font-weight: 800; margin: 10px 0; }
-  .price-trend-summary { margin-top: -5px; margin-bottom: 15px; font-size: 16px; color: var(--muted); }
+  .price-trend-summary { margin-top: -5px; margin-bottom: 8px; font-size: 16px; color: var(--muted); }
   .price-trend-summary .increase { color: var(--poke-green); }
   .price-trend-summary .decrease { color: var(--poke-red); }
+  .global-compare { font-size: 15px; margin-bottom: 16px; }
+  .global-compare .higher { color: #34D399; }  /* green */
+  .global-compare .lower { color: #F87171; }   /* red */
   .view-on-site-btn {
     display: inline-block; padding: 12px 24px; background: var(--poke-blue);
     color: white; border-radius: 12px; text-decoration: none; font-weight: 700;
-    margin-top: 20px; transition: transform .2s ease;
+    margin-top: 12px; transition: transform .2s ease;
   }
   .view-on-site-btn:hover { filter: brightness(1.1); transform: translateY(-2px); }
   .section-title {
@@ -163,15 +159,16 @@
       border: 1px solid var(--border); margin-bottom: 24px;
   }
 
-  /* Mobile Nav Styles */
+  /* Mobile Nav Styles (fixed: fully off-screen until opened) */
   .mobile-nav-toggle { display: none; }
   .mobile-nav {
-      position: fixed; top: 0; left: -280px; width: 280px; height: 100%;
+      position: fixed; top: 0; left: 0; width: 280px; height: 100%;
       background: var(--panel); padding: 20px; z-index: 1000;
-      transition: left 0.3s ease-in-out;
       border-right: 1px solid var(--border);
+      transform: translateX(-100%);
+      transition: transform 0.3s ease-in-out;
   }
-  .mobile-nav.open { left: 0; }
+  .mobile-nav.open { transform: translateX(0); }
   .mobile-nav a {
       display: block; color: var(--text); text-decoration: none;
       font-size: 18px; padding: 15px 0; border-bottom: 1px solid var(--border);
@@ -202,13 +199,8 @@
         grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
         gap: 10px;
     }
-    .card img {
-        height: 150px;
-    }
-    .title {
-        font-size: 14px;
-        min-height: 3em;
-    }
+    .card img { height: 150px; }
+    .title { font-size: 14px; min-height: 3em; }
     .item-detail-container { grid-template-columns: 1fr; }
     .item-info h2 { font-size: 22px; }
   }
@@ -267,8 +259,9 @@
         <div class="item-info">
             <h2>{{ item.title }}</h2>
             <div class="price">{{ item.price }}</div>
+            <div id="globalCompare" class="global-compare" style="display:none;"></div>
             <div id="priceTrendSummary" class="price-trend-summary"></div>
-            <div class="flex gap-4 mt-4">
+            <div class="flex gap-4 mt-2">
                 <a href="{{ item.url }}" target="_blank" rel="noopener" class="view-on-site-btn">
                     Visit Store &nbsp;<i class="fas fa-external-link-alt"></i>
                 </a>
@@ -360,21 +353,15 @@
 <script>
   const BASE_URL = '{{ base_url }}';
 
-  // --- MOBILE NAV SCRIPT ---
+  // --- MOBILE NAV SCRIPT (transform-based) ---
   const mobileNav = document.getElementById('mobileNav');
   const openBtn = document.getElementById('mobileNavOpen');
-  
-  openBtn.addEventListener('click', () => {
-      mobileNav.classList.toggle('open');
-  });
-  
+  openBtn.addEventListener('click', () => mobileNav.classList.toggle('open'));
   document.addEventListener('click', (e) => {
-      if (!mobileNav.contains(e.target) && !openBtn.contains(e.target)) {
-          mobileNav.classList.remove('open');
-      }
+      if (!mobileNav.contains(e.target) && !openBtn.contains(e.target)) mobileNav.classList.remove('open');
   });
 
-  // --- SHARED FUNCTIONS (used by both pages) ---
+  // --- SHARED CARD RENDER ---
   function cardHTML(p) {
       const safeTitle = (p.title || '').replace(/"/g, '&quot;');
       const itemParams = new URLSearchParams({
@@ -397,68 +384,42 @@
           </div>
         </div>`;
   }
-  
+
+  // --- PRICE HISTORY HELPERS ---
   async function fetchHistory(title) {
       const url = new URL(`api/price-history?title=${encodeURIComponent(title)}`, BASE_URL);
       const response = await fetch(url);
-      if (!response.ok) {
-          throw new Error('Failed to fetch price history');
-      }
+      if (!response.ok) throw new Error('Failed to fetch price history');
       return await response.json();
   }
-  
   function processDataForChart(data, months) {
       const now = new Date();
-      const cutoff = new Date();
-      cutoff.setMonth(now.getMonth() - months);
+      const cutoff = new Date(); cutoff.setMonth(now.getMonth() - months);
       const filtered = data.filter(d => new Date(d.date) >= cutoff);
-      if (months === 1) {
-          return filtered.map(d => ({ x: d.date, y: d.price }));
-      } else {
-          const monthly = {};
-          filtered.forEach(d => {
-              const month = d.date.substring(0, 7);
-              if (!monthly[month]) {
-                  monthly[month] = { sum: 0, count: 0 };
-              }
-              monthly[month].sum += d.price;
-              monthly[month].count++;
-          });
-          return Object.keys(monthly).map(month => ({
-              x: `${month}-01`,
-              y: monthly[month].sum / monthly[month].count
-          }));
-      }
+      if (months === 1) return filtered.map(d => ({ x: d.date, y: d.price }));
+      const monthly = {};
+      filtered.forEach(d => {
+          const month = d.date.substring(0, 7);
+          if (!monthly[month]) monthly[month] = { sum: 0, count: 0 };
+          monthly[month].sum += d.price; monthly[month].count++;
+      });
+      return Object.keys(monthly).map(month => ({ x: `${month}-01`, y: monthly[month].sum / monthly[month].count }));
   }
-  
   function drawChart(canvasEl, data, timeframe) {
       return new Chart(canvasEl, {
           type: 'line',
-          data: {
-              datasets: [{
-                  label: 'Price (€)',
-                  data: processDataForChart(data, timeframe),
-                  borderColor: 'rgba(255, 204, 0, 1)',
-                  backgroundColor: 'rgba(255, 204, 0, 0.2)',
-                  tension: 0.1, fill: true, pointBackgroundColor: 'rgba(255, 204, 0, 1)', pointRadius: 4,
-              }]
-          },
+          data: { datasets: [{ label: 'Price (€)', data: processDataForChart(data, timeframe),
+              borderColor: 'rgba(255, 204, 0, 1)', backgroundColor: 'rgba(255, 204, 0, 0.2)',
+              tension: 0.1, fill: true, pointBackgroundColor: 'rgba(255, 204, 0, 1)', pointRadius: 4 }] },
           options: {
               responsive: true, maintainAspectRatio: false,
               scales: {
-                  x: {
-                      type: 'time', time: { unit: timeframe === 1 ? 'day' : 'month' },
-                      ticks: { color: '#a7b6d6' }, grid: { color: 'rgba(255,255,255,0.1)' }
-                  },
-                  y: {
-                      ticks: { color: '#a7b6d6', callback: value => `€${value.toFixed(2)}` },
-                      grid: { color: 'rgba(255,255,255,0.1)' }
-                  }
+                  x: { type: 'time', time: { unit: timeframe === 1 ? 'day' : 'month' },
+                      ticks: { color: '#a7b6d6' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                  y: { ticks: { color: '#a7b6d6', callback: value => `€${value.toFixed(2)}` },
+                      grid: { color: 'rgba(255,255,255,0.1)' } }
               },
-              plugins: {
-                  legend: { display: false },
-                  tooltip: { backgroundColor: '#16223a', padding: 10, cornerRadius: 8 }
-              }
+              plugins: { legend: { display: false }, tooltip: { backgroundColor: '#16223a', padding: 10, cornerRadius: 8 } }
           }
       });
   }
@@ -469,7 +430,7 @@
     // --- ITEM DETAIL PAGE SCRIPT ---
     const currentItem = {
       title: {{ item.title | tojson }},
-      url: {{ item.url | tojson }}
+      price: {{ item.price | tojson }}
     };
     
     const chartCanvas = document.getElementById('priceChart');
@@ -479,42 +440,221 @@
     const relatedGrid = document.getElementById('relatedGrid');
     const relatedLoader = document.getElementById('relatedLoader');
     const priceTrendSummaryEl = document.getElementById('priceTrendSummary');
+    const globalCompareEl = document.getElementById('globalCompare');
     let priceChart = null;
     let currentHistoryData = [];
 
-    function calculateAndDisplayTrend(data) {
-        const now = new Date();
-        const thirtyDaysAgo = new Date(new Date().setDate(now.getDate() - 30));
-        
-        const recentData = data.filter(d => new Date(d.date) >= thirtyDaysAgo);
-        if (recentData.length < 2) {
-            priceTrendSummaryEl.textContent = "Price has been stable recently.";
-            return;
-        }
+   /* ---------- Universal matching helpers ---------- */
+  const TYPE_SYNONYMS = {
+    boosterpack: ["boosterpack","pack"],
+    boosterbox: ["boosterbox","box","display"],
+    elitetrainerbox: ["elitetrainerbox","etb"],
+    boosterbundle: ["boosterbundle","bundle"],
+    blister: ["blister"],
+    collection: ["collection"],
+    tin: ["tin"],
+    deck: ["deck"],
+    sleeves: ["sleeves"],
+    binder: ["binder"]
+  };
 
-        const oldestEntry = recentData[0];
-        const latestEntry = recentData[recentData.length - 1];
-        
-        const oldestPrice = oldestEntry.price;
-        const latestPrice = latestEntry.price;
-        
-        const change = latestPrice - oldestPrice;
-        const percentChange = (change / oldestPrice) * 100;
-        
-        const oldestDate = new Date(oldestEntry.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+  // generic fluff (English only)
+  const GENERIC_STOPWORDS = new Set([
+    "pokemon","pokémon","tcg","sealed","official","english","greek",
+    "new","factory","original","trading","card","cards","the","a","an"
+  ]);
+  // series words (too broad)
+  const GENERIC_SERIES = new Set(["scarlet","violet","scarletviolet","sv"]);
+  // type words (handled via detectType)
+  const TYPE_WORDS = new Set(["elite","trainer","box","etb","booster","pack","bundle","display","case","tin","deck","sleeves","binder","collection","blister"]);
 
-        let summaryText = '';
-        if (Math.abs(percentChange) < 2) {
-            summaryText = 'Overall, the price has shown stability.';
-        } else if (percentChange > 0) {
-            summaryText = `An <span class="increase">${percentChange.toFixed(1)}% increase</span> since ${oldestDate}.`;
-        } else {
-            summaryText = `A <span class="decrease">${Math.abs(percentChange).toFixed(1)}% decrease</span> since ${oldestDate}.`;
-        }
-        priceTrendSummaryEl.innerHTML = summaryText;
+  // price sanity (EUR)
+  const PRICE_GUARD = {
+    elitetrainerbox:[20,200], boosterbox:[50,500], boosterpack:[2,20],
+    boosterbundle:[15,120], blister:[4,60], collection:[15,300],
+    tin:[10,150], deck:[5,120], sleeves:[3,40], binder:[5,90]
+  };
+
+  function pricePlausible(type, eur){
+    const r = PRICE_GUARD[type]; if(!r) return eur>0; return eur>=r[0] && eur<=r[1];
+  }
+
+  // Normalize to lowercase ASCII letters + digits; removes accents & Greek.
+  function normalize(str){
+    return (str||'')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')   // strip diacritics (é -> e)
+      .replace(/[^a-z0-9\s]/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+
+  function baseTokens(str){
+    return normalize(str).split(' ')
+      .filter(Boolean)
+      .filter(t => /[a-z]/.test(t))                 // English only
+      .filter(t => !GENERIC_STOPWORDS.has(t));
+  }
+
+  function coreTokens(str){
+    const keepNumbers = new Set(["151"]);           // keep set 151
+    return baseTokens(str).filter(t=>{
+      if (/^pok\d+$/i.test(t)) return false;        // POK113664
+      if (/^\d+$/.test(t) && !keepNumbers.has(t)) return false;
+      if (GENERIC_SERIES.has(t)) return false;
+      if (TYPE_WORDS.has(t)) return false;
+      return t.length >= 3;
+    });
+  }
+
+  function bigrams(tokens){ const out=[]; for(let i=0;i<tokens.length-1;i++) out.push(tokens[i]+' '+tokens[i+1]); return out; }
+
+  function detectType(str){
+    const n = normalize(str).replace(/\s/g,'');
+    for(const [key,vars] of Object.entries(TYPE_SYNONYMS)){
+      if(vars.some(v => n.includes(v))) return key;
     }
+    return null;
+  }
+
+  function jaccard(a,b){
+    const A=new Set(a), B=new Set(b);
+    const inter=[...A].filter(x=>B.has(x));
+    const union=new Set([...A,...B]);
+    return {score: union.size? inter.length/union.size : 0, inter};
+  }
+
+  function parseEuro(s){
+    if(!s) return null;
+    const m=String(s).match(/[\d.,]+/); if(!m) return null;
+    let v=m[0];
+    if(v.includes(',') && v.includes('.')) v=v.replace(/\./g,'').replace(',', '.');
+    else if(v.includes(',')) v=v.replace(',', '.');
+    const n=parseFloat(v);
+    return Number.isFinite(n)? n : null;
+  }
+
+  // Accent-insensitive “Pokémon Center” & lot/display detection (works on ASCII)
+  const LOT_WORDS = ['sealed case','case','cases','lot','bundle','display','boxset','collection box','display box','booster display'];
+  function hasPokemonCenter(str){ return normalize(str).includes('pokemon center'); }
+  function hasLotWords(str){ const n=normalize(str); return LOT_WORDS.some(w => n.includes(w)); }
+
+  /* ----------------------- GLOBAL COMPARISON ----------------------- */
+  async function compareWithGlobal(){
+    try{
+      const r = await fetch(new URL('api/sealed-products', BASE_URL));
+      if(!r.ok) return;
+      const globalItems = await r.json();
+
+      const greekTitle = currentItem.title || '';
+      const greekType  = detectType(greekTitle);
+      if(!greekType) return;
+
+      const greekCore  = coreTokens(greekTitle);
+      if(greekCore.length < 1) return;
+
+      // require a set phrase overlap when present (e.g., "destined rivals", "obsidian flames", "black bolt", …)
+      const greekPhrases = bigrams(baseTokens(greekTitle))
+        .filter(p => p.split(' ').every(w => !GENERIC_SERIES.has(w) && !TYPE_WORDS.has(w)));
+
+      const greekIsPC   = hasPokemonCenter(greekTitle);
+      const greekHasLot = hasLotWords(greekTitle);
+
+      let best=null, bestScore=0, bestStrong=0;
+
+      for(const gi of globalItems){
+        const allText = `${gi.item_title||''} ${gi.set_name||''}`.trim();
+        const giType  = detectType(allText);
+        if(giType !== greekType) continue;
+
+        const giIsPC   = hasPokemonCenter(allText);
+        const giHasLot = hasLotWords(allText);
+        if(giIsPC !== greekIsPC) continue;     // PC vs non-PC must match
+        if(giHasLot !== greekHasLot) continue; // case/lot/display/bundle must match
+
+        const giCore = coreTokens(allText);
+        if(!giCore.length) continue;
+
+        // phrase gate: if Greek contains any set phrase, candidate must share at least one
+        const giPhrases = bigrams(baseTokens(allText))
+          .filter(p => p.split(' ').every(w => !GENERIC_SERIES.has(w) && !TYPE_WORDS.has(w)));
+        if(greekPhrases.length && !greekPhrases.some(p => giPhrases.includes(p))) continue;
+
+        const {score, inter} = jaccard(greekCore, giCore);
+        const strong = inter.filter(t => t.length >= 5).length;
+
+        if(score > bestScore || (score === bestScore && strong > bestStrong)){
+          best = gi; bestScore = score; bestStrong = strong;
+        }
+      }
+
+      if(!best) return;
+
+      // accept if reasonably similar OR many strong overlaps
+      const bestCore = coreTokens(`${best.item_title||''} ${best.set_name||''}`);
+      const { inter } = jaccard(greekCore, bestCore);
+      const strongInter = inter.filter(t => t.length >= 5);
+      const similarEnough = (bestScore >= 0.50) || (strongInter.length >= 2 && inter.length >= 3);
+      if(!similarEnough) return;
+
+      // prices
+      let globalPrice = Number(best.price_eur);
+      if(!Number.isFinite(globalPrice) || globalPrice<=0){
+        const usd = Number(best.price_usd);
+        globalPrice = (Number.isFinite(usd) && usd>0) ? usd*0.92 : parseEuro(best.raw_price);
+      }
+      const greekPrice = parseEuro(currentItem.price);
+      if(!greekPrice || !globalPrice || globalPrice<=0) return;
+
+      // sanity check by type (avoid ETB vs case/lot or wrong product)
+      if(!pricePlausible(greekType, globalPrice)) return;
+
+      // If % gap is extreme, demand near-exact match
+      const diffPct = ((greekPrice - globalPrice)/globalPrice)*100;
+      const absPct  = Math.abs(diffPct);
+      if(absPct > 60 && bestScore < 0.70 && !(strongInter.length >= 3 && inter.length >= 4)) return;
+
+      const direction = diffPct >= 0 ? 'higher' : 'lower';
+      const cls = diffPct >= 0 ? 'higher' : 'lower';
+      globalCompareEl.innerHTML = `<span class="${cls}">${absPct.toFixed(1)}% ${direction}</span> than the average global market price.`;
+      globalCompareEl.style.display = 'block';
+    }catch(e){
+      console.warn('Global compare failed', e);
+    }
+  }
+
+    // ----- 30-day trend for Greek history -----
+  function calculateAndDisplayTrend(data) {
+      const now = new Date();
+      const thirtyDaysAgo = new Date(new Date().setDate(now.getDate() - 30));
+      const recentData = data.filter(d => new Date(d.date) >= thirtyDaysAgo);
+      if (recentData.length < 2) {
+          priceTrendSummaryEl.textContent = "Price has been stable recently.";
+          return;
+      }
+      const oldestEntry = recentData[0];
+      const latestEntry = recentData[recentData.length - 1];  // <-- fixed line
+      const oldestPrice = oldestEntry.price;
+      const latestPrice = latestEntry.price;
+      const change = latestPrice - oldestPrice;
+      const percentChange = (change / oldestPrice) * 100;
+      const oldestDate = new Date(oldestEntry.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+
+      let summaryText = '';
+      if (Math.abs(percentChange) < 2) {
+          summaryText = 'Overall, the price has shown stability.';
+      } else if (percentChange > 0) {
+          summaryText = `An <span class="increase">${percentChange.toFixed(1)}% increase</span> since ${oldestDate}.`;
+      } else {
+          summaryText = `A <span class="decrease">${Math.abs(percentChange).toFixed(1)}% decrease</span> since ${oldestDate}.`;
+      }
+      priceTrendSummaryEl.innerHTML = summaryText;
+  }
 
     async function initializeDetailPage() {
+        // Run Greek-vs-Global comparison immediately; it will only show text if we get a strong match.
+        compareWithGlobal();
+
         try {
             currentHistoryData = await fetchHistory(currentItem.title);
             chartLoader.style.display = 'none';
@@ -534,7 +674,7 @@
         }
 
         try {
-            const params = new URLSearchParams({ title: currentItem.title, url: currentItem.url });
+            const params = new URLSearchParams({ title: currentItem.title, url: {{ item.url | tojson }} });
             const relatedUrl = new URL(`api/related-products?${params.toString()}`, BASE_URL);
             const r = await fetch(relatedUrl);
             const data = await r.json();
@@ -594,18 +734,12 @@
     function doSearchFromInput(){
       const query = qInput.value.trim();
       if (!query) return;
-      // Redirect to the homepage with the search query
       window.location.href = `${BASE_URL}?q=${encodeURIComponent(query)}`;
     }
 
     if (btnSearch && qInput) {
         btnSearch.onclick = doSearchFromInput;
-        qInput.addEventListener('keydown', (e)=>{ 
-            if(e.key==='Enter'){ 
-                e.preventDefault(); 
-                doSearchFromInput(); 
-            } 
-        });
+        qInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); doSearchFromInput(); } });
         qInput.addEventListener('input', showSuggest);
         document.addEventListener('click', (e)=>{ if(!suggestBox.contains(e.target) && e.target!==qInput){ suggestBox.style.display='none'; } });
         suggestBox.addEventListener('click', (e)=>{ 
@@ -662,13 +796,9 @@
             if (data && data.length) {
                 marketGrid.innerHTML = data.map(item => {
                     let searchTerm = item.category;
-                    if (searchTerm.endsWith('s')) {
-                        searchTerm = searchTerm.slice(0, -1);
-                    }
-                    return `
-                    <a href="#" class="market-tag status-${item.status}" data-category="${searchTerm}">
-                        ${item.category} <span class="explanation">${item.explanation}</span>
-                    </a>`;
+                    if (searchTerm.endsWith('s')) searchTerm = searchTerm.slice(0, -1);
+                    return `<a href="#" class="market-tag status-${item.status}" data-category="${searchTerm}">
+                        ${item.category} <span class="explanation">${item.explanation}</span></a>`;
                 }).join('');
             } else {
                 marketGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">No market status data available.</p>';
@@ -721,19 +851,14 @@
     toggleMarketStatusBtn.addEventListener('click', () => {
         const isVisible = marketStatusContainer.style.display === 'block';
         marketStatusContainer.style.display = isVisible ? 'none' : 'block';
-        if (!isVisible && !marketStatusLoaded) {
-            fetchMarketStatus();
-        }
+        if (!isVisible && !marketStatusLoaded) fetchMarketStatus();
     });
 
     document.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
         const queryFromUrl = urlParams.get('q');
-        if (queryFromUrl) {
-            qInput.value = queryFromUrl;
-            currentQuery = queryFromUrl;
-        }
-      fetchPage(1, false);
+        if (queryFromUrl) { qInput.value = queryFromUrl; currentQuery = queryFromUrl; }
+        fetchPage(1, false);
     });
 </script>
 {% endif %}
