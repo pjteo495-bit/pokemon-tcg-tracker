@@ -192,15 +192,26 @@ def api_global_related():
     if not title:
         return jsonify({"items": []})
 
-    # Improved keyword extraction
     def get_keywords(text):
         stopwords = {'pokemon', 'pokémon', 'tcg', 'sealed', 'official', 'english', 'card', 'cards', 'and'}
         type_words = {'elite', 'trainer', 'box', 'etb', 'booster', 'pack', 'bundle', 'display', 'case', 'tin', 'deck', 'sleeves', 'binder', 'collection', 'blister'}
-        # Find all alphanumeric sequences
         tokens = set(re.findall(r'[a-z0-9]+', text))
-        # Remove stopwords and common type words, but keep important specific terms
         keywords = tokens - stopwords - type_words
         return keywords
+
+    def get_product_type_priority(text):
+        priority_map = {
+            "booster pack": 5,
+            "booster box": 5,
+            "booster bundle": 5,
+            "elite trainer box": 5,
+            "etb": 5,
+            "sealed booster pack": 5,
+        }
+        for key, priority in priority_map.items():
+            if key in text:
+                return priority
+        return 0
 
     search_keywords = get_keywords(title)
     if not search_keywords:
@@ -227,17 +238,18 @@ def api_global_related():
                 common_words = search_keywords.intersection(item_keywords)
                 score = len(common_words)
                 
-                if score > 1: # Require at least 2 matching keywords
+                # Add priority boost
+                score += get_product_type_priority(item_text)
+                
+                if score > 2: # Require a decent base match
                     scored_matches.append((score, normalized_row))
 
     except Exception as e:
         print(f"Error in /api/global-related: {e}")
         return jsonify({"error": "Failed to process related items."}), 500
 
-    # Sort by score (descending)
     scored_matches.sort(key=lambda x: x[0], reverse=True)
     
-    # Format top results for frontend
     final_items = []
     for score, item in scored_matches[:8]:
         final_items.append({
@@ -245,7 +257,6 @@ def api_global_related():
             "price": f"€{item.get('price_eur', 0.0):.2f}",
             "image_url": item.get("image_url_hd"),
             "url": f"https://www.ebay.com/sch/i.html?_nkw={item.get('item_title', '')} Pokemon"
-            # NOTE: No "source" key is included, so the frontend treats it as an external link
         })
 
     return jsonify({"items": final_items})
