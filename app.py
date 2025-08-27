@@ -26,7 +26,7 @@ app = Flask(__name__, template_folder="templates")
 
 # ---- Config ----
 # Set on Render → Environment (e.g., 0.92). Defaults to 0.92 if unset.
-USD_TO_EUR = float(os.environ.get("USD_TO_EUR", "0.92"))
+USD_TO_EUR = float(os.environ.get("USD_TO_EUR", "0.86"))
 
 # --- Helper Functions ---
 def parse_date_from_filename(name):
