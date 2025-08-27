@@ -1,58 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sealed Products Prices - POKEGR</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    :root {
-      --poke-blue:#2A75BB;
-      --poke-yellow:#FFCC00;
-      --bg:#0b1220;
-      --panel:#121a2b;
-      --card-bg:#16223a;
-      --text:#eaf1ff;
-      --muted:#a7b6d6;
-      --border:#23314c;
-    }
-    body{
-      font-family:'Poppins',sans-serif;
-      background-color:var(--bg);
-      color:var(--text);
-      background-image:linear-gradient(rgba(11,18,32,.85),rgba(11,18,32,.85)),url('https://cdn.midjourney.com/9fdabdd5-ee83-470f-b488-ecbf9f08ea8b/0_0.png');
-      background-size:cover;background-attachment:fixed;
-    }
+    :root{--poke-blue:#2A75BB;--poke-yellow:#FFCC00;--bg:#0b1220;--panel:#121a2b;--card-bg:#16223a;--text:#eaf1ff;--muted:#a7b6d6;--border:#23314c}
+    body{font-family:'Poppins',sans-serif;background-color:var(--bg);color:var(--text);
+         background-image:linear-gradient(rgba(11,18,32,.85),rgba(11,18,32,.85)),url('https://cdn.midjourney.com/9fdabdd5-ee83-470f-b488-ecbf9f08ea8b/0_0.png');
+         background-size:cover;background-attachment:fixed;}
     .wrap{max-width:1200px;margin:0 auto;padding:22px 16px 42px;}
     .header{display:flex;justify-content:space-between;align-items:center;padding-bottom:15px;border-bottom:1px solid var(--border);margin-bottom:2rem;}
-    .logo{display:flex;align-items:center;gap:12px;text-decoration:none;}
-    .poke-ball{width:42px;height:42px;}
-    .logo h1{margin:0;font-size:28px;font-weight:800;color:var(--text);}
-    .nav-buttons{display:flex;gap:15px;align-items:center;}
-    .nav-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:var(--poke-blue);color:#fff;border-radius:12px;text-decoration:none;font-weight:700;transition:all .2s ease;}
-    .nav-btn:hover{background:#1b4f8e;transform:translateY(-2px);}
-    h2{ text-align:center;font-size:2.5rem;font-weight:800;margin-bottom:30px;}
-    .search-container{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:30px;}
-    .search-container input{width:100%;height:52px;border-radius:12px;border:1px solid var(--border);background:var(--panel);color:#fff;padding:0 18px;font-size:16px;outline:none;}
-    .results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px;}
-    .product-card{background-color:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:15px;text-align:center;}
-    .product-card img{width:100%;height:200px;object-fit:contain;background:#fff;border-radius:8px;margin-bottom:15px;image-rendering:auto;}
-    .product-card h3{font-weight:700;margin-bottom:5px;}
-    .product-card p{color:var(--muted);margin-bottom:12px;}
-    .price{color:var(--poke-yellow);font-weight:700;font-size:1.2rem;margin-bottom:15px;}
-    .ebay-btn{display:inline-block;width:100%;padding:10px;background-color:#5a5a5a;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;transition:background-color .2s;}
-    .ebay-btn:hover{background-color:#4a4a4a;}
+    .logo{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--text)}
+    h2{text-align:center;font-size:2.5rem;font-weight:800;margin:20px 0 30px}
+    .nav-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:var(--poke-blue);color:#fff;border-radius:12px;text-decoration:none;font-weight:700;transition:.2s}
+    .nav-btn:hover{background:#1b4f8e;transform:translateY(-2px)}
+    .search-container{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px}
+    .search-container input{width:100%;height:52px;border-radius:12px;border:1px solid var(--border);background:var(--panel);color:#fff;padding:0 18px;font-size:16px;outline:none}
+    .results-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:20px}
+    .product-card{background-color:var(--card-bg);border:1px solid var(--border);border-radius:18px;padding:15px;text-align:center}
+    .product-card img{width:100%;height:220px;object-fit:contain;background:#fff;border-radius:12px;margin-bottom:12px;image-rendering:auto}
+    .product-card h3{font-weight:700;margin-bottom:4px}
+    .product-card p{color:var(--muted);margin-bottom:10px}
+    .price{color:var(--poke-yellow);font-weight:800;font-size:1.2rem;margin-bottom:12px}
+    .ebay-btn{display:inline-block;width:100%;padding:10px;background:#5a5a5a;color:#fff;border-radius:10px;text-decoration:none;font-weight:600}
   </style>
 </head>
 <body>
   <div class="wrap">
     <header class="header">
-      <a href="/" class="logo">
-        <img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="Pokegr Logo" class="poke-ball">
-        <h1>POKEGR</h1>
-      </a>
-      <div class="nav-buttons">
+      <a href="/" class="logo"><img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="" width="42" height="42"><strong>POKEGR</strong></a>
+      <div>
         <a href="/tcg-tracker" class="nav-btn">TCG Tracker</a>
         <a href="/top100" class="nav-btn">Top 100</a>
         <a href="/wallpapers" class="nav-btn">Wallpapers</a>
@@ -74,7 +53,7 @@
     const setSearch   = document.getElementById('setSearch');
     const typeSearch  = document.getElementById('typeSearch');
     const resultsGrid = document.getElementById('resultsGrid');
-    const fmtEUR = new Intl.NumberFormat('el-GR', { style: 'currency', currency: 'EUR' });
+    const fmtEUR      = new Intl.NumberFormat('el-GR', { style: 'currency', currency: 'EUR' });
 
     let allProducts = [];
 
@@ -88,7 +67,7 @@
         allProducts = await res.json();
         renderProducts();
       }catch(err){
-        console.error('Failed to load products:', err);
+        console.error(err);
         resultsGrid.innerHTML = `<p>Failed to load data.</p>`;
       }
     }
@@ -98,22 +77,27 @@
       const typeQ = typeSearch.value.toLowerCase();
 
       const filtered = allProducts.filter(p => {
-        const setName  = (p.set_name   || '').toLowerCase();
-        const itemType = (p.item_title || '').toLowerCase();
-        return setName.includes(setQ) && itemType.includes(typeQ);
+        return (p.set_name||'').toLowerCase().includes(setQ)
+            && (p.item_title||'').toLowerCase().includes(typeQ);
       });
 
       resultsGrid.innerHTML = filtered.map(p => {
-        const imgSrc = p.image_url_hd || p.image_url || '';
-        const eur    = (typeof p.price_eur === 'number') ? p.price_eur : 0;
+        // Provide srcset so HiDPI screens use the larger variant
+        const hd  = p.image_url_hd  || p.image_url || '';
+        const xhd = p.image_url_xhd || hd;
+
         const ebayQuery = encodeURIComponent(`${p.set_name || ''} ${p.item_title || ''}`);
+        const price = (typeof p.price_eur === 'number') ? p.price_eur : 0;
 
         return `
           <div class="product-card">
-            <img loading="lazy" referrerpolicy="no-referrer" src="${imgSrc}" alt="${(p.set_name||'') + ' ' + (p.item_title||'')}">
+            <img loading="lazy" referrerpolicy="no-referrer"
+                 src="${hd}"
+                 srcset="${hd} 1x, ${xhd} 2x"
+                 alt="${(p.set_name||'') + ' ' + (p.item_title||'')}">
             <h3>${p.set_name || '—'}</h3>
             <p>${p.item_title || ''}</p>
-            <div class="price">${fmtEUR.format(eur)}</div>
+            <div class="price">${fmtEUR.format(price)}</div>
             <a class="ebay-btn" target="_blank" rel="noopener noreferrer"
                href="https://www.ebay.com/sch/i.html?_nkw=${ebayQuery}">
               Check eBay
