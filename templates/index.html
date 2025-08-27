@@ -462,7 +462,7 @@
       } else if (percentChange > 0) {
           summaryText = `An <span class="increase">${percentChange.toFixed(1)}% increase</span> since ${oldestDate}.`;
       } else {
-          summaryText = `A <span class="decrease">${Math.abs(percentChange.toFixed(1)}% decrease</span> since ${oldestDate}.`;
+          summaryText = `A <span class="decrease">${Math.abs(percentChange).toFixed(1)}% decrease</span> since ${oldestDate}.`;
       }
       priceTrendSummaryEl.innerHTML = summaryText;
   }
