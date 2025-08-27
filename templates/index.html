@@ -366,6 +366,8 @@
   // --- SHARED CARD RENDER ---
   function cardHTML(p) {
       const safeTitle = (p.title || '').replace(/"/g, '&quot;');
+      const isLocalItem = p.source && p.source.length > 0;
+
       const itemParams = new URLSearchParams({
           title: p.title || '',
           price: p.price || '',
@@ -373,8 +375,10 @@
           url: p.url || '',
           source: p.source || ''
       }).toString();
-      const detailUrl = p.source ? `${BASE_URL}item?${itemParams}` : (p.url || '#');
-      const target = p.source ? '' : 'target="_blank" rel="noopener"';
+
+      const detailUrl = isLocalItem ? `${BASE_URL}item?${itemParams}` : (p.url || '#');
+      const target = isLocalItem ? '' : 'target="_blank" rel="noopener"';
+      const buttonText = isLocalItem ? 'View Details' : 'View on eBay';
       
       return `
         <div class="card">
@@ -384,7 +388,7 @@
           <div class="title">${safeTitle}</div>
           <div class="price">${p.price || ''}</div>
           <div class="card-buttons">
-              <a class="view" href="${detailUrl}" ${target}>${p.source ? 'View Details' : 'View on eBay'}</a>
+              <a class="view" href="${detailUrl}" ${target}>${buttonText}</a>
           </div>
         </div>`;
   }
@@ -708,16 +712,3 @@
 
 </body>
 </html>
-" code between  and  in the most up-to-date Canvas "index.html (Fixed)" document above and am asking a query about/based on this code below.
-Instructions to follow:
-  * Don't output/edit the document if the query is Direct/Simple. For example, if the query asks for a simple explanation, output a direct answer.
-  * Make sure to **edit** the document if the query shows the intent of editing the document, in which case output the entire edited document, **not just that section or the edits**.
-    * Don't output the same document/empty document and say that you have edited it.
-    * Don't change unrelated code in the document.
-  * Don't output  and  in your final response.
-  * Any references like "this" or "selected code" refers to the code between  and  tags.
-  * Just acknowledge my request in the introduction.
-  * Make sure to refer to the document as "Canvas" in your response.
-
-(actual user query begins now)
-the global similar items are not clickable, please fix it and make them clicka
