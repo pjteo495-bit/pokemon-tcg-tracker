@@ -1,4 +1,4 @@
-# Force-refresh deployment 2025-08-24-v5-NORMALIZATION
+# Force-refresh deployment 2025-08-27-v6-IMG+EUR
 import sys
 import re
 from flask import Flask, render_template, request, jsonify
@@ -24,6 +24,10 @@ data_loader.load_data()
 
 app = Flask(__name__, template_folder="templates")
 
+# ---- Config ----
+# Set on Render → Environment (e.g., 0.92). Defaults to 0.92 if unset.
+USD_TO_EUR = float(os.environ.get("USD_TO_EUR", "0.92"))
+
 # --- Helper Functions ---
 def parse_date_from_filename(name):
     """Parses a date from a filename string with multiple possible formats."""
@@ -43,6 +47,73 @@ def normalize_title_for_history(title):
     # Remove all non-alphanumeric characters to create a consistent key
     s = re.sub(r'[^a-z0-9]', '', s)
     return s
+
+# --- Sealed Products helpers (HD image + EUR) ---
+def _upgrade_image(url: str) -> str:
+    """Return a higher-res image URL when we recognize the host; otherwise return the original."""
+    if not url:
+        return url
+    try:
+        # eBay thumbnails like /s-l64.jpg, /s-l140.jpg, /s-l225.jpg → bump to /s-l500.jpg
+        if "i.ebayimg.com" in url:
+            url = re.sub(r"/s-l\d+(\.\w+)(\?.*)?$", r"/s-l500\1", url)
+
+        # TCGplayer: try to switch thumbnail->main and bump width parameter if present
+        if "tcgplayer" in url:
+            url = url.replace("thumbnail", "main")
+            url = re.sub(r"([?&])w(idth)?=\d+", r"\1w=600", url)
+    except Exception:
+        pass
+    return url
+
+def _parse_price_to_float(s: str):
+    """Parse a price string that might include $/€ and commas into a float (USD)."""
+    if s is None:
+        return None
+    m = re.search(r"[\d,.]+", str(s))
+    if not m:
+        return None
+    val = m.group(0)
+    # try US-style first
+    try:
+        return float(val.replace(",", ""))
+    except ValueError:
+        # EU-style fallback
+        try:
+            return float(val.replace(".", "").replace(",", "."))
+        except ValueError:
+            return None
+
+def _normalize_sealed_row(row: dict) -> dict:
+    """
+    Normalize CSV row to the frontend schema and compute HD image + EUR price.
+    Returns:
+      {
+        set_name, item_title, raw_price, image_url, image_url_hd,
+        price_usd (float), price_eur (float)
+      }
+    """
+    # normalize keys: lower, trim, spaces -> underscores
+    norm = {re.sub(r"\s+", "_", (k or "").strip().lower()): (v or "").strip()
+            for k, v in row.items()}
+
+    set_name   = norm.get("set_name") or norm.get("set") or norm.get("series")
+    item_title = norm.get("item_title") or norm.get("title") or norm.get("item") or norm.get("product_title")
+    raw_price  = norm.get("raw_price") or norm.get("price") or norm.get("current_price")
+    image_url  = norm.get("image_url") or norm.get("image") or norm.get("img_url") or norm.get("img")
+
+    usd = _parse_price_to_float(raw_price) or 0.0
+    eur = round(usd * USD_TO_EUR, 2)
+
+    return {
+        "set_name": set_name,
+        "item_title": item_title,
+        "raw_price": raw_price,        # original string (kept for reference)
+        "price_usd": usd,
+        "price_eur": eur,
+        "image_url": image_url,
+        "image_url_hd": _upgrade_image(image_url) or image_url,
+    }
 
 # --- App Routes ---
 @app.route("/")
@@ -111,7 +182,7 @@ def sealed_products_page():
 
 @app.route("/api/sealed-products")
 def api_sealed_products():
-    """Return sealed products with normalized keys expected by the frontend."""
+    """Return sealed products with normalized keys + HD images + EUR prices."""
     # Look in both casings + project root
     candidates = [
         os.path.join(app.root_path, "sealed_item_prices", "tcg_sealed_prices.csv"),
@@ -128,19 +199,7 @@ def api_sealed_products():
         # utf-8-sig strips a possible BOM from the first header
         with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
             reader = csv.DictReader(f)
-            out = []
-            for row in reader:
-                # normalize keys: lower, trim, spaces -> underscores
-                norm = {re.sub(r"\s+", "_", (k or "").strip().lower()): (v or "").strip()
-                        for k, v in row.items()}
-
-                product = {
-                    "set_name": norm.get("set_name") or norm.get("set") or norm.get("series"),
-                    "item_title": norm.get("item_title") or norm.get("title") or norm.get("item") or norm.get("product_title"),
-                    "raw_price": norm.get("raw_price") or norm.get("price") or norm.get("current_price"),
-                    "image_url": norm.get("image_url") or norm.get("image") or norm.get("img_url") or norm.get("img"),
-                }
-                out.append(product)
+            out = [_normalize_sealed_row(row) for row in reader]
         return jsonify(out)
     except Exception as e:
         print(f"Error reading sealed products CSV at {csv_path}: {e}")
