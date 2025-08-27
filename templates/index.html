@@ -287,6 +287,12 @@
       </div>
 
       <div class="related-section">
+          <h3 class="section-title">Global Market Similar Items</h3>
+          <div id="globalRelatedGrid" class="grid"></div>
+          <div id="globalRelatedLoader" class="spinner" style="margin: 20px auto; display: block;"></div>
+      </div>
+
+      <div class="related-section">
           <h3 class="section-title">People Also Viewed</h3>
           <div id="relatedGrid" class="grid"></div>
           <div id="relatedLoader" class="spinner" style="margin: 20px auto; display: block;"></div>
@@ -367,16 +373,18 @@
           url: p.url || '',
           source: p.source || ''
       }).toString();
-      const detailUrl = `${BASE_URL}item?${itemParams}`;
+      const detailUrl = p.source ? `${BASE_URL}item?${itemParams}` : (p.url || '#');
+      const target = p.source ? '' : 'target="_blank" rel="noopener"';
+      
       return `
         <div class="card">
-          <a class="imgwrap" href="${detailUrl}">
+          <a class="imgwrap" href="${detailUrl}" ${target}>
             <img src="${p.image_url || ''}" loading="lazy" alt="${safeTitle}" onerror="this.style.visibility='hidden'">
           </a>
           <div class="title">${safeTitle}</div>
           <div class="price">${p.price || ''}</div>
           <div class="card-buttons">
-              <a class="view" href="${detailUrl}">View Details</a>
+              <a class="view" href="${detailUrl}" ${target}>${p.source ? 'View Details' : 'View on eBay'}</a>
           </div>
         </div>`;
   }
@@ -435,6 +443,8 @@
     const timeframeBtns = document.querySelectorAll('.timeframe-btn');
     const relatedGrid = document.getElementById('relatedGrid');
     const relatedLoader = document.getElementById('relatedLoader');
+    const globalRelatedGrid = document.getElementById('globalRelatedGrid');
+    const globalRelatedLoader = document.getElementById('globalRelatedLoader');
     const priceTrendSummaryEl = document.getElementById('priceTrendSummary');
     let priceChart = null;
     let currentHistoryData = [];
@@ -468,6 +478,7 @@
   }
 
     async function initializeDetailPage() {
+        // Fetch Price History
         try {
             currentHistoryData = await fetchHistory(currentItem.title);
             chartLoader.style.display = 'none';
@@ -486,6 +497,7 @@
             priceTrendSummaryEl.textContent = "Could not load price trend.";
         }
 
+        // Fetch "People Also Viewed"
         try {
             const params = new URLSearchParams({ title: currentItem.title, url: {{ item.url | tojson }} });
             const relatedUrl = new URL(`api/related-products?${params.toString()}`, BASE_URL);
@@ -501,6 +513,24 @@
             console.error("Failed to load related items", e);
             relatedLoader.style.display = 'none';
             relatedGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">Error loading related items.</p>';
+        }
+
+        // Fetch "Global Market Similar Items"
+        try {
+            const globalParams = new URLSearchParams({ title: currentItem.title });
+            const globalRelatedUrl = new URL(`api/global-related?${globalParams.toString()}`, BASE_URL);
+            const r = await fetch(globalRelatedUrl);
+            const data = await r.json();
+            globalRelatedLoader.style.display = 'none';
+            if (data.items && data.items.length) {
+              globalRelatedGrid.innerHTML = data.items.map(cardHTML).join('');
+            } else {
+              globalRelatedGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">No similar global items found.</p>';
+            }
+        } catch(e) {
+            console.error("Failed to load global related items", e);
+            globalRelatedLoader.style.display = 'none';
+            globalRelatedGrid.innerHTML = '<p style="text-align:center; color: var(--muted);">Error loading global related items.</p>';
         }
     }
 
