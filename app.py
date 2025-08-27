@@ -115,34 +115,24 @@ def sealed_products_page():
     return render_template("sealed_products.html")
 
 
-# --- API Routes ---
 @app.route("/api/sealed-products")
 def api_sealed_products():
     """Provides a list of sealed products from the CSV file."""
-    sealed_dir = "sealed_item_prices"
-    latest_file = None
-    latest_time = 0
-    if os.path.isdir(sealed_dir):
-        for item in os.listdir(sealed_dir):
-            if item.lower().endswith('.csv'):
-                item_path = os.path.join(sealed_dir, item)
-                try:
-                    mtime = os.path.getmtime(item_path)
-                    if mtime > latest_time:
-                        latest_time = mtime
-                        latest_file = item_path
-                except Exception:
-                    continue
-    
     products = []
-    if latest_file:
-        try:
-            with open(latest_file, 'r', encoding='utf-8') as f:
-                reader = csv.DictReader(f)
-                products = list(reader)
-        except Exception as e:
-            print(f"Error reading sealed products CSV: {e}")
-
+    # Directly specify the CSV file to be read.
+    csv_file_path = "tcg_sealed_prices.csv"
+    
+    try:
+        with open(csv_file_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            products = list(reader)
+    except FileNotFoundError:
+        print(f"Error: The file {csv_file_path} was not found.")
+        return jsonify({"error": "Data file not found."}), 404
+    except Exception as e:
+        print(f"Error reading sealed products CSV: {e}")
+        return jsonify({"error": "Failed to read product data."}), 500
+        
     return jsonify(products)
 
 
