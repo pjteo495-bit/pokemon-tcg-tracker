@@ -11,6 +11,7 @@
     body{font-family:'Poppins',sans-serif;background-color:var(--bg);color:var(--text);
          background-image:linear-gradient(rgba(11,18,32,.85),rgba(11,18,32,.85)),url('https://cdn.midjourney.com/9fdabdd5-ee83-470f-b488-ecbf9f08ea8b/0_0.png');
          background-size:cover;background-attachment:fixed;}
+    main.page-content { overflow-x: hidden; }
     .wrap{max-width:1200px;margin:0 auto;padding:22px 16px 42px;}
     .header{display:flex;justify-content:space-between;align-items:center;padding-bottom:15px;border-bottom:1px solid var(--border);margin-bottom:2rem;}
     .logo{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--text)}
@@ -44,6 +45,7 @@
         font-size: 18px; padding: 15px 0; border-bottom: 1px solid var(--border);
     }
     .mobile-nav a i { margin-right: 10px; }
+    .header-spacer { display: none; }
 
     @media (max-width: 768px) {
         .nav-buttons { display: none; }
@@ -51,9 +53,19 @@
             display: block;
             background: none; border: none; color: var(--text);
             font-size: 24px; cursor: pointer;
+            flex: 0 0 40px;
+            padding: 0;
+            text-align: left;
         }
-        .header { justify-content: space-between; width: 100%; }
-        .logo { flex-grow: 1; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-spacer {
+            display: block;
+            flex: 0 0 40px;
+        }
     }
   </style>
 </head>
@@ -65,33 +77,35 @@
       <a href="/wallpapers"><i class="fas fa-image"></i> Wallpapers</a>
       <a href="/global-prices"><i class="fas fa-globe"></i> Global Prices</a>
   </div>
+  <main class="page-content">
+      <div class="wrap">
+        <header class="header">
+            <button class="mobile-nav-toggle" id="mobileNavOpen"><i class="fas fa-bars"></i></button>
+            <a href="/" class="logo">
+                <img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="Pokegr Logo" width="42" height="42">
+                <h1>POKEGR</h1>
+            </a>
+            <div class="header-spacer"></div>
+            <div class="nav-buttons">
+                <a href="/" class="nav-btn"><i class="fas fa-store"></i> <span>Marketplace</span></a>
+                <a href="/tcg-tracker" class="nav-btn"><i class="fas fa-search"></i> <span>TCG Tracker</span></a>
+                <a href="/top100" class="nav-btn"><i class="fas fa-fire"></i> <span>Top 100</span></a>
+                <a href="/wallpapers" class="nav-btn"><i class="fas fa-image"></i> <span>Wallpapers</span></a>
+                <a href="/global-prices" class="nav-btn"><i class="fas fa-globe"></i> <span>Global Prices</span></a>
+            </div>
+        </header>
 
-  <div class="wrap">
-    <header class="header">
-        <button class="mobile-nav-toggle" id="mobileNavOpen"><i class="fas fa-bars"></i></button>
-        <a href="/" class="logo">
-            <img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="Pokegr Logo" width="42" height="42">
-            <h1>POKEGR</h1>
-        </a>
-        <div class="nav-buttons">
-            <a href="/" class="nav-btn"><i class="fas fa-store"></i> <span>Marketplace</span></a>
-            <a href="/tcg-tracker" class="nav-btn"><i class="fas fa-search"></i> <span>TCG Tracker</span></a>
-            <a href="/top100" class="nav-btn"><i class="fas fa-fire"></i> <span>Top 100</span></a>
-            <a href="/wallpapers" class="nav-btn"><i class="fas fa-image"></i> <span>Wallpapers</span></a>
-            <a href="/global-prices" class="nav-btn"><i class="fas fa-globe"></i> <span>Global Prices</span></a>
+        <h2 class="page-title">Global Prices</h2>
+        <p class="page-description">Global average prices for sealed Pokemon TCG items.</p>
+
+        <div class="search-container">
+          <input type="text" id="setSearch"  placeholder="Search by Set Name...">
+          <input type="text" id="typeSearch" placeholder="Search by Item Type (e.g., Booster Box)...">
         </div>
-    </header>
 
-    <h2 class="page-title">Global Prices</h2>
-    <p class="page-description">Global average prices for sealed Pokemon TCG items.</p>
-
-    <div class="search-container">
-      <input type="text" id="setSearch"  placeholder="Search by Set Name...">
-      <input type="text" id="typeSearch" placeholder="Search by Item Type (e.g., Booster Box)...">
-    </div>
-
-    <div id="resultsGrid" class="results-grid"></div>
-  </div>
+        <div id="resultsGrid" class="results-grid"></div>
+      </div>
+  </main>
 
   <script>
     // --- MOBILE NAV SCRIPT ---
