@@ -62,7 +62,6 @@
     background:linear-gradient(to right, var(--poke-blue), var(--poke-green));
     -webkit-background-clip:text; -webkit-text-fill-color:transparent;
   }
-  /* ... (rest of the CSS is unchanged) ... */
   .tcg-search { position:relative; margin:30px auto; max-width:700px; }
   .tcg-search input { width:100%; box-sizing: border-box; height:56px; border-radius:14px; padding:0 20px 0 52px; font-size:18px; background:var(--panel); color:var(--text); border:1px solid var(--border); outline:none; box-shadow:0 8px 22px rgba(0,0,0,.25); }
   .tcg-search input::placeholder { color: var(--muted); }
@@ -118,25 +117,53 @@
   .random-card-btn.tcgplayer:hover { background-color: #1b4f8e; }
   .random-card-btn.ebay { background-color: var(--chip); color: var(--text); }
   .random-card-btn.ebay:hover { background-color: var(--panel); }
+
+  /* Mobile Nav Styles */
+  .mobile-nav-toggle { display: none; }
+  .mobile-nav {
+      position: fixed; top: 0; left: -280px; width: 280px; height: 100%;
+      background: var(--panel); padding: 20px; z-index: 1000;
+      transition: left 0.3s ease-in-out;
+      border-right: 1px solid var(--border);
+  }
+  .mobile-nav.open { left: 0; }
+  .mobile-nav a {
+      display: block; color: var(--text); text-decoration: none;
+      font-size: 18px; padding: 15px 0; border-bottom: 1px solid var(--border);
+  }
+  .mobile-nav a i { margin-right: 10px; }
+
   @media (max-width: 768px) {
-    .wrap { padding: 15px; }
-    .header { flex-direction: column; gap: 10px; }
-    .logo h1 { font-size: 22px; }
+    .nav-buttons { display: none; }
+    .mobile-nav-toggle {
+        display: block;
+        background: none; border: none; color: var(--text);
+        font-size: 24px; cursor: pointer;
+    }
+    .header { justify-content: space-between; width: 100%; }
+    .logo { flex-grow: 1; }
     .main-title { font-size: 1.8rem; }
     .card-header { flex-direction: column; gap: 20px; }
     .card-image { flex-basis: auto; max-width: 100%; }
     .card-details { min-width: 0; }
     .card-title { font-size: 24px; }
-    .nav-btn span { display: none; }
-    .nav-btn { padding: 10px 12px; }
     #tcgResults { padding: 15px; }
     .random-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 </style>
 </head>
 <body>
+<div class="mobile-nav" id="mobileNav">
+    <a href="/"><i class="fas fa-store"></i> Marketplace</a>
+    <a href="/tcg-tracker"><i class="fas fa-search"></i> TCG Tracker</a>
+    <a href="/top100"><i class="fas fa-fire"></i> Top 100</a>
+    <a href="/wallpapers"><i class="fas fa-image"></i> Wallpapers</a>
+    <a href="/global-prices"><i class="fas fa-globe"></i> Global Prices</a>
+</div>
+
 <div class="wrap">
   <header class="header">
+      <button class="mobile-nav-toggle" id="mobileNavOpen"><i class="fas fa-bars"></i></button>
       <a href="/" class="logo">
           <img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="Pokegr Logo" class="poke-ball" width="42" height="42">
           <h1>POKEGR</h1>
@@ -172,7 +199,20 @@
 </div>
 
 <script>
-  // ... (JavaScript is unchanged) ...
+  // --- MOBILE NAV SCRIPT ---
+  const mobileNav = document.getElementById('mobileNav');
+  const openBtn = document.getElementById('mobileNavOpen');
+  
+  openBtn.addEventListener('click', () => {
+      mobileNav.classList.toggle('open');
+  });
+  
+  document.addEventListener('click', (e) => {
+      if (!mobileNav.contains(e.target) && !openBtn.contains(e.target)) {
+          mobileNav.classList.remove('open');
+      }
+  });
+
   const tcgSearch = document.getElementById('tcgSearch');
   const tcgSuggest = document.getElementById('tcgSuggest');
   const tcgResults = document.getElementById('tcgResults');
