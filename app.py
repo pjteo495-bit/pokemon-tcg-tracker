@@ -111,25 +111,41 @@ def sealed_products_page():
 
 @app.route("/api/sealed-products")
 def api_sealed_products():
-    """Provides a list of sealed products from the CSV file."""
-    # Try both the subfolder and the project root (use absolute paths).
+    """Return sealed products with normalized keys expected by the frontend."""
+    # Look in both casings + project root
     candidates = [
         os.path.join(app.root_path, "sealed_item_prices", "tcg_sealed_prices.csv"),
+        os.path.join(app.root_path, "Sealed_Item_prices", "tcg_sealed_prices.csv"),
         os.path.join(app.root_path, "tcg_sealed_prices.csv"),
     ]
 
-    for path in candidates:
-        if os.path.exists(path):
-            try:
-                with open(path, "r", encoding="utf-8", newline="") as f:
-                    return jsonify(list(csv.DictReader(f)))
-            except Exception as e:
-                print(f"Error reading sealed products CSV at {path}: {e}")
-                return jsonify({"error": "Failed to read product data."}), 500
+    csv_path = next((p for p in candidates if os.path.exists(p)), None)
+    if not csv_path:
+        print("Data file not found. Looked for:", candidates, "cwd=", os.getcwd())
+        return jsonify({"error": "Data file not found."}), 404
 
-    # Helpful logging in case of deploy path issues
-    print("Data file not found. Looked for:", candidates, "cwd=", os.getcwd())
-    return jsonify({"error": "Data file not found."}), 404
+    try:
+        # utf-8-sig strips a possible BOM from the first header
+        with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
+            reader = csv.DictReader(f)
+            out = []
+            for row in reader:
+                # normalize keys: lower, trim, spaces -> underscores
+                norm = {re.sub(r"\s+", "_", (k or "").strip().lower()): (v or "").strip()
+                        for k, v in row.items()}
+
+                product = {
+                    "set_name": norm.get("set_name") or norm.get("set") or norm.get("series"),
+                    "item_title": norm.get("item_title") or norm.get("title") or norm.get("item") or norm.get("product_title"),
+                    "raw_price": norm.get("raw_price") or norm.get("price") or norm.get("current_price"),
+                    "image_url": norm.get("image_url") or norm.get("image") or norm.get("img_url") or norm.get("img"),
+                }
+                out.append(product)
+        return jsonify(out)
+    except Exception as e:
+        print(f"Error reading sealed products CSV at {csv_path}: {e}")
+        return jsonify({"error": "Failed to read product data."}), 500
+
 
 @app.route("/api/market-status")
 def api_market_status():
