@@ -53,10 +53,6 @@
             gap: 12px;
             text-decoration: none;
         }
-        .poke-ball {
-            width: 42px;
-            height: 42px;
-        }
         .logo h1 {
             margin: 0;
             font-size: 28px;
@@ -84,28 +80,6 @@
             background: #1b4f8e;
             transform: translateY(-2px);
         }
-        .dropdown {
-            position: relative;
-            display: inline-block;
-        }
-        .dropdown-content {
-            display: none;
-            position: absolute;
-            background-color: var(--panel);
-            min-width: 160px;
-            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-            z-index: 1;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-        }
-        .dropdown-content a {
-            color: var(--text);
-            padding: 12px 16px;
-            text-decoration: none;
-            display: block;
-        }
-        .dropdown-content a:hover {background-color: var(--card-bg);}
-        .dropdown:hover .dropdown-content {display: block;}
         @media (max-width: 768px) {
             .header {
                 flex-direction: column;
@@ -128,25 +102,15 @@
     <div class="container mx-auto px-4 py-8">
         <header class="header">
             <a href="/" class="logo">
-                <img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="Pokegr Logo" class="poke-ball">
+                <img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="Pokegr Logo" class="poke-ball" width="42" height="42">
                 <h1>POKEGR</h1>
             </a>
             <div class="nav-buttons">
-                <a href="/tcg-tracker" class="nav-btn">
-                    <i class="fas fa-search"></i>
-                    <span>TCG Tracker</span>
-                </a>
-                 <a href="/" class="nav-btn">
-                    <i class="fas fa-store"></i>
-                    <span>Marketplace</span>
-                </a>
-                <div class="dropdown">
-                    <a href="/wallpapers" class="nav-btn"><i class="fas fa-image"></i> <span>Wallpapers</span></a>
-                    <div class="dropdown-content">
-                        <a href="/wallpapers#pc-wallpapers">PC Wallpapers</a>
-                        <a href="/wallpapers#mobile-wallpapers">Mobile Wallpapers</a>
-                    </div>
-                </div>
+                <a href="/" class="nav-btn"><i class="fas fa-store"></i> <span>Marketplace</span></a>
+                <a href="/tcg-tracker" class="nav-btn"><i class="fas fa-search"></i> <span>TCG Tracker</span></a>
+                <a href="/top100" class="nav-btn"><i class="fas fa-fire"></i> <span>Top 100</span></a>
+                <a href="/wallpapers" class="nav-btn"><i class="fas fa-image"></i> <span>Wallpapers</span></a>
+                <a href="/global-prices" class="nav-btn"><i class="fas fa-globe"></i> <span>Global Prices</span></a>
             </div>
         </header>
 
@@ -205,47 +169,34 @@
     </div>
 
     <script>
+    // ... (JavaScript is unchanged) ...
     document.addEventListener('DOMContentLoaded', () => {
         const grid = document.getElementById('card-grid');
         const searchInput = document.getElementById('searchInput');
         const sortSelect = document.getElementById('sortSelect');
-
         function updateDisplay() {
             const searchTerm = searchInput.value.toLowerCase();
             const sortValue = sortSelect.value;
             let cards = Array.from(grid.children);
-
             cards.forEach(card => {
                 const name = card.dataset.name;
-                if (name && name.includes(searchTerm)) {
-                    card.style.display = 'flex';
-                } else if (name) {
-                    card.style.display = 'none';
-                }
+                if (name && name.includes(searchTerm)) { card.style.display = 'flex'; } 
+                else if (name) { card.style.display = 'none'; }
             });
-
             let visibleCards = cards.filter(c => c.style.display !== 'none');
-            
             if (sortValue !== 'default') {
                 visibleCards.sort((a, b) => {
-                    let valA, valB;
                     switch (sortValue) {
-                        case 'price-desc':
-                            return parseFloat(b.dataset.price) - parseFloat(a.dataset.price);
-                        case 'price-asc':
-                            return parseFloat(a.dataset.price) - parseFloat(b.dataset.price);
-                        case 'name-asc':
-                            return a.dataset.name.localeCompare(b.dataset.name);
-                        case 'trend-desc':
-                            return parseFloat(b.dataset.trend) - parseFloat(a.dataset.trend);
+                        case 'price-desc': return parseFloat(b.dataset.price) - parseFloat(a.dataset.price);
+                        case 'price-asc': return parseFloat(a.dataset.price) - parseFloat(b.dataset.price);
+                        case 'name-asc': return a.dataset.name.localeCompare(b.dataset.name);
+                        case 'trend-desc': return parseFloat(b.dataset.trend) - parseFloat(a.dataset.trend);
                     }
                     return 0;
                 });
             }
-            
             visibleCards.forEach(card => grid.appendChild(card));
         }
-
         searchInput.addEventListener('input', updateDisplay);
         sortSelect.addEventListener('change', updateDisplay);
     });
