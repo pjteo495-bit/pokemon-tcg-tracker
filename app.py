@@ -1,4 +1,4 @@
-# Force-refresh deployment 2025-08-28-v9-GLOBAL-RELATED
+# Force-refresh deployment 2025-08-28-v10-GLOBAL-RELATED
 import sys, re, os, csv, glob, random, threading, unicodedata
 from flask import Flask, render_template, request, jsonify
 from datetime import datetime, timedelta
@@ -10,39 +10,31 @@ try:
     import scraper
     import scraper_pokemon
     import data_loader
-    # --- Load Data on Startup ---
     data_loader.load_data()
 except ImportError:
-    print("Warning: Local modules (scraper, scraper_pokemon, data_loader) not found. Some features may not work.")
+    print("Warning: Local modules (scraper, scraper_pokemon, data_loader) not found.")
     class Dummy:
-        def __getattr__(self, _):
-            return lambda *args, **kwargs: None
-    scraper = Dummy()
-    scraper_pokemon = Dummy()
-    data_loader = Dummy()
+        def __getattr__(self, _): return lambda *a, **k: None
+    scraper = Dummy(); scraper_pokemon = Dummy(); data_loader = Dummy()
 
 app = Flask(__name__, template_folder="templates")
 
 # ---- Config ----
 USD_TO_EUR = float(os.environ.get("USD_TO_EUR", "0.86"))
 
-# ---------- Helpers ----------
+# ---------- Generic helpers ----------
 def parse_date_from_filename(name):
     for fmt in ("%d %m %Y", "%Y-%m-%d", "%d-%m-%Y", "%m-%d-%Y"):
-        try:
-            return datetime.strptime(name, fmt)
-        except ValueError:
-            pass
+        try: return datetime.strptime(name, fmt)
+        except ValueError: pass
     return None
 
 def normalize_title_for_history(title):
-    if not isinstance(title, str):
-        return ""
+    if not isinstance(title, str): return ""
     return re.sub(r'[^a-z0-9]', '', title.lower())
 
 def _upgrade_image(url: str, level: int = 1) -> str:
-    if not url:
-        return url
+    if not url: return url
     try:
         if "pricecharting.com" in url:
             return url.replace("/60.jpg", "/1600.jpg")
@@ -61,19 +53,14 @@ def _upgrade_image(url: str, level: int = 1) -> str:
     return url
 
 def _parse_price_to_float(s: str):
-    if s is None:
-        return None
+    if s is None: return None
     m = re.search(r"[\d,.]+", str(s))
-    if not m:
-        return None
+    if not m: return None
     val = m.group(0)
-    try:
-        return float(val.replace(",", ""))
+    try: return float(val.replace(",", ""))
     except ValueError:
-        try:
-            return float(val.replace(".", "").replace(",", "."))
-        except ValueError:
-            return None
+        try: return float(val.replace(".", "").replace(",", "."))
+        except ValueError: return None
 
 def _normalize_sealed_row(row: dict) -> dict:
     norm = {re.sub(r"\s+", "_", (k or "").strip().lower()): (v or "").strip()
@@ -90,92 +77,83 @@ def _normalize_sealed_row(row: dict) -> dict:
     img_xhd = _upgrade_image(image_url, level=2) or img_hd
 
     return {
-        "set_name": set_name,
-        "item_title": item_title,
-        "raw_price": raw_price,
-        "price_usd": usd,
-        "price_eur": eur,
-        "image_url": image_url,
-        "image_url_hd": img_hd,
-        "image_url_xhd": img_xhd,
+        "set_name": set_name, "item_title": item_title,
+        "raw_price": raw_price, "price_usd": usd, "price_eur": eur,
+        "image_url": image_url, "image_url_hd": img_hd, "image_url_xhd": img_xhd,
     }
 
-# ---- Small text/typing helpers used by /api/global-related ----
+# ---------- Text helpers used by /api/global-related ----------
 GENERIC = {
     "pokemon","pokémon","tcg","sealed","official","english","card","cards","and",
     "scarlet","violet","sv","series","set","base","tcg"
 }
 TYPE_SYNONYMS = {
-    "booster pack": {"booster pack","pack","sealed booster pack"},
-    "booster box": {"booster box","display","box","case"},
+    "booster pack":   {"booster pack","pack","sealed booster pack"},
+    "booster box":    {"booster box","display","box","case"},
     "booster bundle": {"booster bundle","bundle"},
     "elite trainer box": {"elite trainer box","etb"},
-    "binder": {"binder","binder collection"},
-    "collection": {"collection","special collection"},
-    "blister": {"blister","checklane"},
-    "deck": {"deck","starter deck","theme deck","battle deck"},
-    "tin": {"tin"},
-    "sleeves": {"sleeves"},
+    "binder":         {"binder","binder collection"},
+    "collection":     {"collection","special collection"},
+    "blister":        {"blister","checklane"},
+    "deck":           {"deck","starter deck","theme deck","battle deck"},
+    "tin":            {"tin"},
+    "sleeves":        {"sleeves"},
 }
 TYPE_LOOKUP = {syn: canon for canon, syns in TYPE_SYNONYMS.items() for syn in syns}
-ALLOWED_TYPES = set(TYPE_SYNONYMS.keys())  # which sealed categories we show
+ALLOWED_TYPES = set(TYPE_SYNONYMS.keys())
 
 def _ascii_fold(s: str) -> str:
-    # ASCII-fold (Pokémon → Pokemon, καινούργιο → ''), collapse spaces
     s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode("utf-8")
     return re.sub(r"\s+", " ", s.lower()).strip()
 
 def _tokens(s: str) -> list[str]:
     return re.findall(r"[a-z0-9]+", _ascii_fold(s))
 
-# NEW: helper to drop SKU-ish tokens (mixed letters+digits) like "pok103193", "sv9", etc.
+# SKU-like tokens (mix letters+digits) that should NOT define the set identity
 _SKUISH = re.compile(r"^(?:sv\d+|s?v?\d+|pok\d+|pkm\d+|tcg\d+|sku\d+|upc\d+|ean\d+|[a-z]*\d{3,}[a-z0-9]*)$")
+
+def _canonical_type(text: str) -> str | None:
+    t = _ascii_fold(text)
+    for phrase in sorted(TYPE_LOOKUP.keys(), key=len, reverse=True):
+        if phrase in t: return TYPE_LOOKUP[phrase]
+    for tok in _tokens(t):
+        if tok in TYPE_LOOKUP: return TYPE_LOOKUP[tok]
+    if "booster" in t and "box" not in t and "bundle" not in t:
+        return "booster pack"
+    return None
 
 def _keywords(text: str, drop_types=True) -> set[str]:
     words = set(_tokens(text))
-    if drop_types:
-        type_words = set(TYPE_LOOKUP.keys()) | {
-            "booster","trainer","box","pack","bundle","display","case","tin","deck","sleeves","binder","collection","blister","etb"
-        }
-    else:
-        type_words = set()
-
+    type_words = set(TYPE_LOOKUP.keys()) | {
+        "booster","trainer","box","pack","bundle","display","case",
+        "tin","deck","sleeves","binder","collection","blister","etb"
+    } if drop_types else set()
     kept = set()
     for w in words:
-        if w in {"pokemon","pokémon","tcg","sealed","official","english","card","cards",
-                 "scarlet","violet","sv","series","set","base","tcg"}:
-            continue
-        if w in type_words:
-            continue
-        # drop mixed alpha+digit SKU-ish tokens (e.g., pok103193, sv9, s12, xyz123)
-        if _SKUISH.match(w) and not w.isdigit():
+        if w in GENERIC or w in type_words: continue
+        if _SKUISH.match(w) and not w.isdigit():  # drop “pok103193”, “sv9”, etc.
             continue
         kept.add(w)
     return kept
 
-def _signature_tokens(title: str) -> set[str]:
+def _signature_tokens(title: str) -> list[str]:
     """
-    Build the 'set identity' from the title.
-    1) Prefer alphabetic tokens (e.g., {"journey","together"}).
-    2) If none exist (e.g., set '151'), fallback to a 3-digit numeric token.
+    Return the most distinctive set tokens from the page title:
+    - Prefer alphabetic tokens (>=4 chars)
+    - If none exist, allow a single 3-digit token (e.g., '151')
     """
     kws = _keywords(title)
     alpha = [w for w in kws if w.isalpha() and len(w) >= 4]
     if alpha:
         alpha.sort(key=lambda w: (-len(w), w))
-        return set(alpha[:3])
-
-    # Fallback: allow a single 3-digit number (e.g., '151') when there are no alpha tokens
+        return alpha[:3]
     nums = [w for w in kws if w.isdigit() and len(w) == 3]
     nums.sort()
-    return set(nums[:1])
+    return nums[:1]
 
 def _is_non_english(text: str) -> bool:
     t = _ascii_fold(text)
-    if any(k in t for k in ["japanese","korean","chinese","kr","jp","cn","jpn","zh"]):
-        return True
-    # Non-ASCII already removed by _ascii_fold, but we still exclude if the original had non-ASCII language markers in title rows
-    return False
+    return any(k in t for k in ["japanese","korean","chinese","kr","jp","cn","jpn","zh"])
 
 def _build_ebay_query(set_name: str, canon_type: str) -> str:
     parts = ["pokemon"]
@@ -184,7 +162,7 @@ def _build_ebay_query(set_name: str, canon_type: str) -> str:
     q = " ".join(parts) + " -japanese -korean -chinese -jp -kr -cn"
     return re.sub(r"\s+", " ", q).strip()
 
-# ---------- Routes ----------
+# ---------- Pages ----------
 @app.route("/")
 def index():
     tz = pytz.timezone('Europe/Athens')
@@ -222,8 +200,7 @@ def top_100_page():
                     csv_path = os.path.join(item_path, 'pokemon_wizard_prices.csv')
                     if os.path.exists(csv_path):
                         mtime = os.path.getmtime(csv_path)
-                        if mtime > latest_time:
-                            latest_time, latest_file = mtime, csv_path
+                        if mtime > latest_time: latest_time, latest_file = mtime, csv_path
                 except Exception:
                     pass
     cards = []
@@ -248,9 +225,7 @@ def api_sealed_products():
     ]
     csv_path = next((p for p in candidates if os.path.exists(p)), None)
     if not csv_path:
-        print("Data file not found. Looked for:", candidates, "cwd=", os.getcwd())
         return jsonify({"error": "Data file not found."}), 404
-
     try:
         with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
             reader = csv.DictReader(f)
@@ -261,20 +236,20 @@ def api_sealed_products():
         return jsonify({"error": "Failed to read product data."}), 500
 
 # ------------------------------------------------------------------
-# Global Related (English, sealed-only, set-aware, 8 items)
+# Global Related: 8 English sealed items for the set in the title
 # ------------------------------------------------------------------
 @app.route("/api/global-related")
 def api_global_related():
-    # Title may contain extra words and non-Latin text; we only care about the set identity.
     title = (request.args.get("title") or "").strip()
     if not title:
         return jsonify({"items": []})
 
-    sig = _signature_tokens(title)             # e.g., {"destined","rivals"}
+    sig_list = _signature_tokens(title)         # e.g., ["journey", "together"]
+    sig = set(sig_list)
     if not sig:
         return jsonify({"items": []})
 
-    # where to read CSV from
+    # locate CSV
     candidates = [
         os.path.join(app.root_path, "sealed_item_prices", "tcg_sealed_prices.csv"),
         os.path.join(app.root_path, "Sealed_Item_prices", "tcg_sealed_prices.csv"),
@@ -284,21 +259,15 @@ def api_global_related():
     if not csv_path:
         return jsonify({"items": []})
 
-    # type preference order
     type_rank = {
-        "booster pack": 6,
-        "booster box": 6,
-        "booster bundle": 5,
-        "elite trainer box": 5,
-        "blister": 4,
-        "collection": 4,
-        "tin": 3,
-        "binder": 2,
-        "deck": 2,
-        "sleeves": 1,
+        "booster pack": 6, "booster box": 6, "booster bundle": 5,
+        "elite trainer box": 5, "blister": 4, "collection": 4,
+        "tin": 3, "binder": 2, "deck": 2, "sleeves": 1,
     }
 
-    results = []
+    results_and = []   # rows that match ALL signature tokens
+    results_or  = []   # rows that match at least ONE signature token
+
     try:
         with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
             reader = csv.DictReader(f)
@@ -308,55 +277,58 @@ def api_global_related():
                 item_title = r.get("item_title", "") or ""
                 joined     = f"{item_title} {set_name}"
 
-                # English-only
+                # English only
                 if _is_non_english(joined):
                     continue
 
-                # Must be a sealed item we care about
+                # Only sealed product types we care about
                 row_type = _canonical_type(joined) or ""
                 if row_type and row_type not in ALLOWED_TYPES:
                     continue
 
-                # Require the candidate to include the set’s signature tokens
                 row_kws = _keywords(joined)
-                # if we detected >=2 signature tokens in the title, require both; otherwise require the single one
-                require = sig if len(sig) >= 2 else set(sig)
-                if not require.issubset(row_kws):
+                overlap = sig & row_kws
+                if not overlap:
                     continue
 
-                # Score: signature coverage + type preference bonus
-                common = len(sig & row_kws)
-                score = 2.0 * common + (type_rank.get(row_type, 0) / 10.0)
+                # scoring
+                score = 10.0 * (1 if sig.issubset(row_kws) else 0) \
+                        + 3.0 * len(overlap) \
+                        + (type_rank.get(row_type, 0) / 10.0)
 
-                # Build display + eBay link
                 display_title = (set_name or "").strip()
-                if item_title and item_title.lower() not in (_ascii_fold(set_name) or ""):
+                if item_title and _ascii_fold(item_title) not in _ascii_fold(set_name):
                     display_title = (display_title + " — " + item_title).strip(" —")
 
-                canon_t  = row_type
-                ebay_q   = _build_ebay_query(set_name or title, canon_t)
+                ebay_q   = _build_ebay_query(set_name or " ".join(sig_list), row_type)
                 ebay_url = "https://www.ebay.com/sch/i.html?_nkw=" + re.sub(r"\s+", "+", ebay_q)
 
-                results.append((
-                    score,
-                    type_rank.get(row_type, 0),
-                    {
-                        "title": display_title or (item_title or set_name or "Item"),
-                        "price": f"€{(r.get('price_eur') or 0):.2f}",
-                        "image_url": r.get("image_url_hd") or r.get("image_url"),
-                        "url": ebay_url
-                    }
-                ))
+                pack = {
+                    "title": display_title or (item_title or set_name or "Item"),
+                    "price": f"€{(r.get('price_eur') or 0):.2f}",
+                    "image_url": r.get("image_url_hd") or r.get("image_url"),
+                    "url": ebay_url
+                }
+
+                if sig.issubset(row_kws):
+                    results_and.append((score, pack))
+                else:
+                    results_or.append((score, pack))
     except Exception as e:
         print(f"Error in /api/global-related: {e}")
         return jsonify({"error": "Failed to process related items."}), 500
 
-    # Sort by score then type rank; take up to 8
-    results.sort(key=lambda t: (t[0], t[1]), reverse=True)
-    items = [x[2] for x in results[:8]]
-    return jsonify({"items": items})
+    # Prefer AND matches; if fewer than 8, fill with OR matches.
+    results_and.sort(key=lambda t: t[0], reverse=True)
+    results_or.sort(key=lambda t: t[0], reverse=True)
+    merged = [p for _, p in results_and[:8]]
+    if len(merged) < 8:
+        needed = 8 - len(merged)
+        merged += [p for _, p in results_or[:needed]]
 
-# ---- Market / history / other routes (unchanged) ----
+    return jsonify({"items": merged})
+
+# ---------- Market / history / other routes (unchanged) ----------
 @app.route("/api/market-status")
 def api_market_status():
     history_dir = "Greek_Prices_History"
@@ -401,49 +373,44 @@ def api_market_status():
     market_status = []
     for category_name, keywords in categories.items():
         cat_df = full_history[full_history[title_col].str.contains('|'.join(keywords), case=False, na=False)]
-        if cat_df.empty:
-            continue
+        if cat_df.empty: continue
         changes = []
         for _, group in cat_df.groupby(title_col):
             if len(group) > 1:
                 group = group.sort_values('date')
                 start_price = group.iloc[0][price_col]
-                end_price = group.iloc[-1][price_col]
+                end_price   = group.iloc[-1][price_col]
                 if start_price > 0:
                     changes.append(((end_price - start_price) / start_price) * 100)
         status, explanation = 'yellow', '(Prices Stable)'
         if changes:
             avg_change = sum(changes) / len(changes)
-            if avg_change > 2.5:  status, explanation = 'green', '(Prices Rising)'
-            elif avg_change < -2.5: status, explanation = 'red', '(Prices Lowering)'
+            if   avg_change >  2.5: status, explanation = 'green', '(Prices Rising)'
+            elif avg_change < -2.5: status, explanation = 'red',   '(Prices Lowering)'
         market_status.append({"category": category_name, "status": status, "explanation": explanation})
     return jsonify(market_status)
 
 @app.route("/api/price-history")
 def api_price_history():
     item_title = request.args.get("title", "").strip()
-    if not item_title:
-        return jsonify({"error": "Missing item title"}), 400
+    if not item_title: return jsonify({"error": "Missing item title"}), 400
     normalized_search_title = normalize_title_for_history(item_title)
     history_dir = "Greek_Prices_History"
     price_history = []
-    if not os.path.isdir(history_dir):
-        return jsonify({"error": "History directory not found"}), 500
+    if not os.path.isdir(history_dir): return jsonify({"error": "History directory not found"}), 500
     files = glob.glob(os.path.join(history_dir, "*.xlsx")) + glob.glob(os.path.join(history_dir, "*.csv"))
     for file_path in files:
         try:
             filename = os.path.basename(file_path)
             date_str = os.path.splitext(filename)[0]
             file_datetime = parse_date_from_filename(date_str)
-            if not file_datetime:
-                continue
+            if not file_datetime: continue
             file_date = file_datetime.strftime("%Y-%m-%d")
             df = pd.read_csv(file_path, encoding='utf-8-sig') if file_path.lower().endswith('.csv') else pd.read_excel(file_path)
             df.columns = [str(c).lower().strip() for c in df.columns]
             title_col = next((c for c in ['item_title', 'title', 'name'] if c in df.columns), None)
             price_col = next((c for c in ['price', 'current_price'] if c in df.columns), None)
-            if not title_col or not price_col:
-                continue
+            if not title_col or not price_col: continue
             df['normalized_title'] = df[title_col].apply(normalize_title_for_history)
             item_row = df[df['normalized_title'] == normalized_search_title]
             if not item_row.empty:
@@ -459,8 +426,7 @@ def api_price_history():
 def api_related_products():
     title = request.args.get("title", "").strip()
     original_url = request.args.get("url", "").strip()
-    if not title:
-        return jsonify({"items": []})
+    if not title: return jsonify({"items": []})
     items = scraper.get_related_products(title, original_url, limit=8)
     return jsonify({"items": items})
 
@@ -476,8 +442,7 @@ def api_home():
 @app.route("/api/search")
 def api_search():
     q = (request.args.get("q") or "").strip()
-    if not q:
-        return jsonify({"items": [], "has_more": False, "total": 0})
+    if not q: return jsonify({"items": [], "has_more": False, "total": 0})
     sort = request.args.get("sort", "bestsellers")
     page = max(1, int(request.args.get("page", 1)))
     page_size = 24
@@ -488,25 +453,21 @@ def api_search():
 @app.route("/api/suggest")
 def api_suggest():
     q = (request.args.get("q") or "").strip()
-    if not q:
-        return jsonify({"items": []})
+    if not q: return jsonify({"items": []})
     return jsonify({"items": scraper.suggest_titles(q, limit=10)})
 
 @app.route("/api/tcg/suggest")
 def api_tcg_suggest():
     q = (request.args.get("q") or "").strip()
-    if not q:
-        return jsonify({"items": []})
+    if not q: return jsonify({"items": []})
     return jsonify({"items": scraper_pokemon.search_pokemon_tcg(q, page_size=12)})
 
 @app.route("/api/tcg/card")
 def api_tcg_card():
     card_id = (request.args.get("id") or "").strip()
-    if not card_id:
-        return jsonify({"error": "Missing id"}), 400
+    if not card_id: return jsonify({"error": "Missing id"}), 400
     data = scraper_pokemon.get_card_details(card_id)
-    if not data:
-        return jsonify({"error": "Not found"}), 404
+    if not data: return jsonify({"error": "Not found"}), 404
     return jsonify(data)
 
 @app.route("/api/tcg/related")
@@ -514,10 +475,8 @@ def api_tcg_related():
     set_id = (request.args.get("setId") or "").strip()
     rarity = (request.args.get("rarity") or "").strip()
     card_id = (request.args.get("cardId") or "").strip()
-    try:
-        count = int(request.args.get("count", 8))
-    except ValueError:
-        count = 8
+    try: count = int(request.args.get("count", 8))
+    except ValueError: count = 8
     items = scraper_pokemon.get_related_cards(set_id, rarity, card_id, count=count)
     return jsonify({"items": items})
 
@@ -533,8 +492,7 @@ def api_tcg_random_trending():
                     csv_path = os.path.join(item_path, 'pokemon_wizard_prices.csv')
                     if os.path.exists(csv_path):
                         mtime = os.path.getmtime(csv_path)
-                        if mtime > latest_time:
-                            latest_time, latest_file = mtime, csv_path
+                        if mtime > latest_time: latest_time, latest_file = mtime, csv_path
                 except Exception:
                     pass
     cards = []
