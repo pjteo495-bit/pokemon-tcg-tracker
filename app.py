@@ -1,5 +1,5 @@
-# Force-refresh deployment 2025-08-27-v8-COMPARE
-import sys, re, os, csv, glob, random, threading
+# Force-refresh deployment 2025-08-28-v9-GLOBAL-RELATED
+import sys, re, os, csv, glob, random, threading, unicodedata
 from flask import Flask, render_template, request, jsonify
 from datetime import datetime, timedelta
 import pandas as pd
@@ -14,7 +14,6 @@ try:
     data_loader.load_data()
 except ImportError:
     print("Warning: Local modules (scraper, scraper_pokemon, data_loader) not found. Some features may not work.")
-    # Create dummy modules/functions if they don't exist to prevent crashes
     class Dummy:
         def __getattr__(self, _):
             return lambda *args, **kwargs: None
@@ -22,11 +21,9 @@ except ImportError:
     scraper_pokemon = Dummy()
     data_loader = Dummy()
 
-
 app = Flask(__name__, template_folder="templates")
 
 # ---- Config ----
-# Allow overriding the FX rate via env; defaults to a conservative 0.92 EUR/USD.
 USD_TO_EUR = float(os.environ.get("USD_TO_EUR", "0.86"))
 
 # ---------- Helpers ----------
@@ -43,25 +40,21 @@ def normalize_title_for_history(title):
         return ""
     return re.sub(r'[^a-z0-9]', '', title.lower())
 
-# === Sealed Products (HD images + EUR) ===
 def _upgrade_image(url: str, level: int = 1) -> str:
     if not url:
         return url
     try:
         if "pricecharting.com" in url:
             return url.replace("/60.jpg", "/1600.jpg")
-
         if "i.ebayimg.com" in url:
             size = 1200 if level >= 2 else 800
             url = re.sub(r"/s-l\d+(\.\w+)(\?.*)?$", fr"/s-l{size}\1", url)
-
         if "tcgplayer" in url:
             box = 1000 if level >= 2 else 700
             url = re.sub(r"/fit-in/\d+x\d+/", fr"/fit-in/{box}x{box}/", url)
             url = re.sub(r"([?&])(w|width)=\d+", fr"\1\2={box}", url)
             url = re.sub(r"([?&])(q|quality)=\d+", r"\g<1>\2=90", url)
             url = url.replace("/thumbnail/", "/main/")
-
         url = re.sub(r"(_thumb)(\.\w+)$", r"\2", url)
     except Exception:
         pass
@@ -85,17 +78,15 @@ def _parse_price_to_float(s: str):
 def _normalize_sealed_row(row: dict) -> dict:
     norm = {re.sub(r"\s+", "_", (k or "").strip().lower()): (v or "").strip()
             for k, v in row.items()}
-
-    set_name = norm.get("set_name") or norm.get("set") or norm.get("series")
+    set_name   = norm.get("set_name") or norm.get("set") or norm.get("series")
     item_title = norm.get("item_title") or norm.get("title") or norm.get("item") or norm.get("product_title")
-    raw_price = norm.get("raw_price") or norm.get("price") or norm.get("current_price")
-    image_url = norm.get("image_url") or norm.get("image") or norm.get("img_url") or norm.get("img")
+    raw_price  = norm.get("raw_price") or norm.get("price") or norm.get("current_price")
+    image_url  = norm.get("image_url") or norm.get("image") or norm.get("img_url") or norm.get("img")
 
     usd = _parse_price_to_float(raw_price) or 0.0
-    # If the file already contains EUR, take it; else convert USD->EUR.
     eur = _parse_price_to_float(norm.get("price_eur") or "") or round(usd * USD_TO_EUR, 2)
 
-    img_hd = _upgrade_image(image_url, level=1) or image_url
+    img_hd  = _upgrade_image(image_url, level=1) or image_url
     img_xhd = _upgrade_image(image_url, level=2) or img_hd
 
     return {
@@ -108,6 +99,78 @@ def _normalize_sealed_row(row: dict) -> dict:
         "image_url_hd": img_hd,
         "image_url_xhd": img_xhd,
     }
+
+# ---- Small text/typing helpers used by /api/global-related ----
+GENERIC = {
+    "pokemon","pokémon","tcg","sealed","official","english","card","cards","and",
+    "scarlet","violet","sv","series","set","base","tcg"
+}
+TYPE_SYNONYMS = {
+    "booster pack": {"booster pack","pack","sealed booster pack"},
+    "booster box": {"booster box","display","box","case"},
+    "booster bundle": {"booster bundle","bundle"},
+    "elite trainer box": {"elite trainer box","etb"},
+    "binder": {"binder","binder collection"},
+    "collection": {"collection","special collection"},
+    "blister": {"blister","checklane"},
+    "deck": {"deck","starter deck","theme deck","battle deck"},
+    "tin": {"tin"},
+    "sleeves": {"sleeves"},
+}
+TYPE_LOOKUP = {syn: canon for canon, syns in TYPE_SYNONYMS.items() for syn in syns}
+ALLOWED_TYPES = set(TYPE_SYNONYMS.keys())  # which sealed categories we show
+
+def _ascii_fold(s: str) -> str:
+    # ASCII-fold (Pokémon → Pokemon, καινούργιο → ''), collapse whitespace
+    s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode("utf-8")
+    return re.sub(r"\s+", " ", s.lower()).strip()
+
+def _tokens(s: str) -> list[str]:
+    return re.findall(r"[a-z0-9]+", _ascii_fold(s))
+
+def _canonical_type(text: str) -> str | None:
+    t = _ascii_fold(text)
+    for phrase in sorted(TYPE_LOOKUP.keys(), key=len, reverse=True):
+        if phrase in t:
+            return TYPE_LOOKUP[phrase]
+    for tok in _tokens(t):
+        if tok in TYPE_LOOKUP:
+            return TYPE_LOOKUP[tok]
+    if "booster" in t and "box" not in t and "bundle" not in t:
+        return "booster pack"
+    return None
+
+def _keywords(text: str, drop_types=True) -> set[str]:
+    words = set(_tokens(text))
+    if drop_types:
+        type_words = set(TYPE_LOOKUP.keys()) | {
+            "booster","trainer","box","pack","bundle","display","case","tin","deck","sleeves","binder","collection","blister","etb"
+        }
+    else:
+        type_words = set()
+    return {w for w in words if w not in GENERIC and w not in type_words}
+
+def _signature_tokens(title: str) -> set[str]:
+    # Distinctive ASCII tokens (>=4 chars). We only need the set identity (e.g., {"destined","rivals"})
+    pool = [w for w in _keywords(title) if len(w) >= 4 and re.fullmatch(r"[a-z0-9]+", w)]
+    if not pool:
+        pool = list(_keywords(title))
+    pool.sort(key=lambda w: (-len(w), w))
+    return set(pool[:3])  # at most 3 is enough
+
+def _is_non_english(text: str) -> bool:
+    t = _ascii_fold(text)
+    if any(k in t for k in ["japanese","korean","chinese","kr","jp","cn","jpn","zh"]):
+        return True
+    # Non-ASCII already removed by _ascii_fold, but we still exclude if the original had non-ASCII language markers in title rows
+    return False
+
+def _build_ebay_query(set_name: str, canon_type: str) -> str:
+    parts = ["pokemon"]
+    if set_name:  parts.append(set_name)
+    if canon_type: parts.append(canon_type)
+    q = " ".join(parts) + " -japanese -korean -chinese -jp -kr -cn"
+    return re.sub(r"\s+", " ", q).strip()
 
 # ---------- Routes ----------
 @app.route("/")
@@ -185,87 +248,17 @@ def api_sealed_products():
         print(f"Error reading sealed products CSV at {csv_path}: {e}")
         return jsonify({"error": "Failed to read product data."}), 500
 
+# ------------------------------------------------------------------
+# Global Related (English, sealed-only, set-aware, 8 items)
+# ------------------------------------------------------------------
 @app.route("/api/global-related")
 def api_global_related():
+    # Title may contain extra words and non-Latin text; we only care about the set identity.
     title = (request.args.get("title") or "").strip()
     if not title:
         return jsonify({"items": []})
 
-    # ---------- helpers ----------
-    GENERIC = {
-        "pokemon","pokémon","tcg","sealed","official","english","card","cards","and",
-        # overly generic set words that caused false positives:
-        "scarlet","violet","base","set","series","sv"
-    }
-    TYPE_SYNONYMS = {
-        "booster pack": {"booster pack","pack","sealed booster pack"},
-        "booster box": {"booster box","display","box","case"},
-        "booster bundle": {"booster bundle","bundle"},
-        "elite trainer box": {"elite trainer box","etb"},
-        "binder": {"binder","binder collection"},
-        "collection": {"collection","special collection"},
-        "blister": {"blister","checklane"},
-        "deck": {"deck","theme deck","starter deck","battle deck"},
-        "tin": {"tin"},
-        "sleeves": {"sleeves"}
-    }
-    TYPE_LOOKUP = {syn: canon for canon, syns in TYPE_SYNONYMS.items() for syn in syns}
-
-    def lower_ascii(s: str) -> str:
-        return re.sub(r"\s+", " ", str(s or "").lower()).strip()
-
-    def toks(s: str) -> list[str]:
-        return re.findall(r"[a-z0-9]+", lower_ascii(s))
-
-    def canonical_type(text: str) -> str | None:
-        t = lower_ascii(text)
-        # check phrases first (etb, booster box, etc.)
-        for phrase in sorted(TYPE_LOOKUP.keys(), key=len, reverse=True):
-            if phrase in t:
-                return TYPE_LOOKUP[phrase]
-        for tok in toks(t):
-            if tok in TYPE_LOOKUP:
-                return TYPE_LOOKUP[tok]
-        # “booster” alone -> pack, which is how most users think/search
-        if "booster" in t and "box" not in t and "bundle" not in t:
-            return "booster pack"
-        return None
-
-    def keywords(text: str, drop_types=True) -> set[str]:
-        words = set(toks(text))
-        if drop_types:
-            type_words = set(TYPE_LOOKUP.keys()) | {"booster","trainer","box","pack","bundle","display","case","tin","deck","sleeves","binder","collection","blister","etb"}
-        else:
-            type_words = set()
-        return {w for w in words if w not in GENERIC and w not in type_words}
-
-    def signature_tokens(text: str) -> set[str]:
-        # Choose distinctive tokens (length ≥4, not digits). E.g., {"white","flare"}
-        pool = [w for w in keywords(text) if len(w) >= 4 and not w.isdigit()]
-        if not pool:
-            pool = list(keywords(text))  # fallback
-        # take up to 3 strongest tokens
-        pool.sort(key=lambda w: (-len(w), w))
-        return set(pool[:3])
-
-    def is_non_english(text: str) -> bool:
-        t = lower_ascii(text)
-        if any(k in t for k in ["japanese","korean","chinese","kr","jp","cn","jpn","zh","中文","日本","한국"]):
-            return True
-        try:
-            (text or "").encode("ascii")
-        except UnicodeEncodeError:
-            return True
-        return False
-
-    def build_ebay_query(set_name: str, canon_type: str) -> str:
-        q = "pokemon " + " ".join([s for s in [set_name, canon_type] if s])
-        q += " -japanese -korean -chinese -jp -kr -cn"
-        return re.sub(r"\s+", " ", q).strip()
-
-    # ---------- target signals ----------
-    target_type = canonical_type(title) or ""
-    sig = signature_tokens(title)             # e.g., {"white","flare"}
+    sig = _signature_tokens(title)             # e.g., {"destined","rivals"}
     if not sig:
         return jsonify({"items": []})
 
@@ -279,63 +272,79 @@ def api_global_related():
     if not csv_path:
         return jsonify({"items": []})
 
-    # ---------- score rows ----------
+    # type preference order
+    type_rank = {
+        "booster pack": 6,
+        "booster box": 6,
+        "booster bundle": 5,
+        "elite trainer box": 5,
+        "blister": 4,
+        "collection": 4,
+        "tin": 3,
+        "binder": 2,
+        "deck": 2,
+        "sleeves": 1,
+    }
+
     results = []
     try:
         with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                r = _normalize_sealed_row(row)  # already in your code
-                set_name   = r.get("set_name", "")
-                item_title = r.get("item_title", "")
+                r = _normalize_sealed_row(row)
+                set_name   = r.get("set_name", "") or ""
+                item_title = r.get("item_title", "") or ""
                 joined     = f"{item_title} {set_name}"
 
-                # language filter: EN only
-                if is_non_english(joined):
+                # English-only
+                if _is_non_english(joined):
                     continue
 
-                row_type = canonical_type(joined) or ""
-                # require same type when both sides are detectable
-                if target_type and row_type and row_type != target_type:
+                # Must be a sealed item we care about
+                row_type = _canonical_type(joined) or ""
+                if row_type and row_type not in ALLOWED_TYPES:
                     continue
 
-                row_kws = keywords(joined)
-                # require ALL signature tokens (e.g., must contain both "white" and "flare")
-                if not sig.issubset(row_kws):
+                # Require the candidate to include the set’s signature tokens
+                row_kws = _keywords(joined)
+                # if we detected >=2 signature tokens in the title, require both; otherwise require the single one
+                require = sig if len(sig) >= 2 else set(sig)
+                if not require.issubset(row_kws):
                     continue
 
-                # score: coverage + slight bonus when type also matches
+                # Score: signature coverage + type preference bonus
                 common = len(sig & row_kws)
-                score = 2.0 * common + (1.5 if (target_type and row_type == target_type) else 0.0)
+                score = 2.0 * common + (type_rank.get(row_type, 0) / 10.0)
 
+                # Build display + eBay link
                 display_title = (set_name or "").strip()
-                if item_title and item_title.lower() not in lower_ascii(set_name):
+                if item_title and item_title.lower() not in (_ascii_fold(set_name) or ""):
                     display_title = (display_title + " — " + item_title).strip(" —")
 
-                canon_t = row_type or target_type
-                ebay_q  = build_ebay_query(set_name or title, canon_t)
+                canon_t  = row_type
+                ebay_q   = _build_ebay_query(set_name or title, canon_t)
                 ebay_url = "https://www.ebay.com/sch/i.html?_nkw=" + re.sub(r"\s+", "+", ebay_q)
 
                 results.append((
                     score,
+                    type_rank.get(row_type, 0),
                     {
                         "title": display_title or (item_title or set_name or "Item"),
                         "price": f"€{(r.get('price_eur') or 0):.2f}",
                         "image_url": r.get("image_url_hd") or r.get("image_url"),
-                        "url": ebay_url,
+                        "url": ebay_url
                     }
                 ))
     except Exception as e:
         print(f"Error in /api/global-related: {e}")
         return jsonify({"error": "Failed to process related items."}), 500
 
-    # sort by score, take top 8
-    results.sort(key=lambda t: t[0], reverse=True)
-    items = [x[1] for x in results[:8]]
+    # Sort by score then type rank; take up to 8
+    results.sort(key=lambda t: (t[0], t[1]), reverse=True)
+    items = [x[2] for x in results[:8]]
     return jsonify({"items": items})
 
-
-# ---- Market / history / other existing routes (unchanged) ----
+# ---- Market / history / other routes (unchanged) ----
 @app.route("/api/market-status")
 def api_market_status():
     history_dir = "Greek_Prices_History"
@@ -352,7 +361,8 @@ def api_market_status():
         "Decks": ["Deck"]
     }
     cutoff_date = datetime.now() - timedelta(days=30)
-    all_data, files = [], glob.glob(os.path.join(history_dir, "*.xlsx")) + glob.glob(os.path.join(history_dir, "*.csv"))
+    all_data = []
+    files = glob.glob(os.path.join(history_dir, "*.xlsx")) + glob.glob(os.path.join(history_dir, "*.csv"))
     for file_path in files:
         try:
             file_datetime = parse_date_from_filename(os.path.splitext(os.path.basename(file_path))[0])
