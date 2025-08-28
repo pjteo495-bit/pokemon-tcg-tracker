@@ -69,7 +69,16 @@
             justify-self: center;
         }
     }
-  </style>
+  
+/* === MOBILE LAYOUT TWEAKS (POKEGR) === */
+@media (max-width: 768px) {
+  .search-container { grid-template-columns: 1fr; gap: 12px; }
+  .results-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px; }
+  .product-card img { height: 160px; object-fit: cover; }
+  .product-card .price { font-size: 16px; }
+}
+
+</style>
 </head>
 <body>
   <div class="mobile-nav" id="mobileNav">
