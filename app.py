@@ -121,24 +121,15 @@ TYPE_LOOKUP = {syn: canon for canon, syns in TYPE_SYNONYMS.items() for syn in sy
 ALLOWED_TYPES = set(TYPE_SYNONYMS.keys())  # which sealed categories we show
 
 def _ascii_fold(s: str) -> str:
-    # ASCII-fold (Pokémon → Pokemon, καινούργιο → ''), collapse whitespace
+    # ASCII-fold (Pokémon → Pokemon, καινούργιο → ''), collapse spaces
     s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode("utf-8")
     return re.sub(r"\s+", " ", s.lower()).strip()
 
 def _tokens(s: str) -> list[str]:
     return re.findall(r"[a-z0-9]+", _ascii_fold(s))
 
-def _canonical_type(text: str) -> str | None:
-    t = _ascii_fold(text)
-    for phrase in sorted(TYPE_LOOKUP.keys(), key=len, reverse=True):
-        if phrase in t:
-            return TYPE_LOOKUP[phrase]
-    for tok in _tokens(t):
-        if tok in TYPE_LOOKUP:
-            return TYPE_LOOKUP[tok]
-    if "booster" in t and "box" not in t and "bundle" not in t:
-        return "booster pack"
-    return None
+# NEW: helper to drop SKU-ish tokens (mixed letters+digits) like "pok103193", "sv9", etc.
+_SKUISH = re.compile(r"^(?:sv\d+|s?v?\d+|pok\d+|pkm\d+|tcg\d+|sku\d+|upc\d+|ean\d+|[a-z]*\d{3,}[a-z0-9]*)$")
 
 def _keywords(text: str, drop_types=True) -> set[str]:
     words = set(_tokens(text))
@@ -148,15 +139,36 @@ def _keywords(text: str, drop_types=True) -> set[str]:
         }
     else:
         type_words = set()
-    return {w for w in words if w not in GENERIC and w not in type_words}
+
+    kept = set()
+    for w in words:
+        if w in {"pokemon","pokémon","tcg","sealed","official","english","card","cards",
+                 "scarlet","violet","sv","series","set","base","tcg"}:
+            continue
+        if w in type_words:
+            continue
+        # drop mixed alpha+digit SKU-ish tokens (e.g., pok103193, sv9, s12, xyz123)
+        if _SKUISH.match(w) and not w.isdigit():
+            continue
+        kept.add(w)
+    return kept
 
 def _signature_tokens(title: str) -> set[str]:
-    # Distinctive ASCII tokens (>=4 chars). We only need the set identity (e.g., {"destined","rivals"})
-    pool = [w for w in _keywords(title) if len(w) >= 4 and re.fullmatch(r"[a-z0-9]+", w)]
-    if not pool:
-        pool = list(_keywords(title))
-    pool.sort(key=lambda w: (-len(w), w))
-    return set(pool[:3])  # at most 3 is enough
+    """
+    Build the 'set identity' from the title.
+    1) Prefer alphabetic tokens (e.g., {"journey","together"}).
+    2) If none exist (e.g., set '151'), fallback to a 3-digit numeric token.
+    """
+    kws = _keywords(title)
+    alpha = [w for w in kws if w.isalpha() and len(w) >= 4]
+    if alpha:
+        alpha.sort(key=lambda w: (-len(w), w))
+        return set(alpha[:3])
+
+    # Fallback: allow a single 3-digit number (e.g., '151') when there are no alpha tokens
+    nums = [w for w in kws if w.isdigit() and len(w) == 3]
+    nums.sort()
+    return set(nums[:1])
 
 def _is_non_english(text: str) -> bool:
     t = _ascii_fold(text)
