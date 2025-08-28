@@ -201,6 +201,53 @@
     .item-detail-container { grid-template-columns: 1fr; }
     .item-info h2 { font-size: 22px; }
   }
+
+/* === MOBILE LAYOUT TWEAKS (POKEGR) === */
+@media (max-width: 768px) {
+
+  /* Greek Market Status: show chips in two columns */
+  .market-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+    justify-items: stretch;
+  }
+  .market-tag {
+    width: 100%;
+    display: inline-flex;
+    justify-content: center;
+    text-align: center;
+  }
+
+  /* Related sections: 2 columns of cards + perfectly centered buttons */
+  .related-section .grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .card-buttons {
+    width: 100%;
+  }
+  .card-buttons .view,
+  .card-buttons .history-btn {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    text-align: center;
+  }
+}
+
+
+@media (max-width: 768px) {
+  /* Ensure both related grids are 2 columns on phones */
+  #globalRelatedGrid.grid,
+  #relatedGrid.grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+}
+
 </style>
 </head>
 <body>
