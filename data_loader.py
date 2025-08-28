@@ -68,7 +68,8 @@ _VARIANT_WORDS = {
     'holo', 'holofoil', 'foil', 'rainbow foil', 'galaxy', 'cosmos',
     'non-holo', 'non holo', 'unlimited', 'first edition', '1st edition', '1st',
     'shadowless', 'staff', 'prerelease', 'pre-release', 'promo',
-    'jumbo', 'oversize', 'shattered glass', 'cracked ice', 'e-reader', 'mini'
+    'jumbo', 'oversize', 'shattered glass', 'cracked ice', 'e-reader', 'mini',
+    'gold star', 'gold-star', 'goldstar'
 }
 
 def _unescape_decode(s: str) -> str:
