@@ -1,9 +1,13 @@
+# data_loader.py
+# Unified, deduped loader with robust normalization and Gold Star handling
+
 import json
 import os
 import re
 from unicodedata import normalize
+from difflib import SequenceMatcher
 
-# New: decoding helpers
+# Decode helpers (your file already used these)
 import html as _html
 import urllib.parse as _urlparse
 
@@ -12,57 +16,27 @@ try:
 except Exception:
     pd = None  # type: ignore
 
-# --- Price lookup globals (indexes) ---
-_price_map = {}
-_price_index = set()  # set of (name_norm, num_norm) pairs we have in CSV
-_by_name_num = {}     # (name_norm, num_norm) -> list of (set_norm, val)
-
-from difflib import SequenceMatcher
-def _token_set(s: str):
-    return set((s or '').split())
-
-def _set_similarity(a: str, b: str) -> float:
-    """Blend Jaccard over tokens with SequenceMatcher for robust fuzzy matching."""
-    ta, tb = _token_set(a), _token_set(b)
-    if not ta or not tb:
-        jac = 0.0
-    else:
-        jac = len(ta & tb) / max(1, len(ta | tb))
-    seq = SequenceMatcher(None, a, b).ratio()
-    return 0.6 * jac + 0.4 * seq
-
-
-
-from difflib import SequenceMatcher
-def _token_set(s: str):
-    return set((s or '').split())
-
-def _set_similarity(a: str, b: str) -> float:
-    """Blend Jaccard over tokens with SequenceMatcher for robust fuzzy matching."""
-    ta, tb = _token_set(a), _token_set(b)
-    if not ta or not tb:
-        jac = 0.0
-    else:
-        jac = len(ta & tb) / max(1, len(ta | tb))
-    seq = SequenceMatcher(None, a, b).ratio()
-    return 0.6 * jac + 0.4 * seq
-
-# --- Configuration ---
-DATA_PATH = os.path.join('pokemon-tcg-data-master', 'cards', 'en')
-SETS_PATH = os.path.join('pokemon-tcg-data-master', 'sets', 'en')
+# --- Paths (same as before) ---------------------------------------------------
+DATA_PATH  = os.path.join('pokemon-tcg-data-master', 'cards', 'en')
+SETS_PATH  = os.path.join('pokemon-tcg-data-master', 'sets', 'en')
 PRICES_DIR = os.path.join('prices')
 
-# --- In-Memory Data Store ---
+# --- In-memory stores ---------------------------------------------------------
 _card_data = []
 _card_dict = {}
-_set_dict = {}
-_price_map = {}                 # (name_norm, set_norm, num_norm) -> prices
-_price_index_by_setnum = {}     # (set_norm, num_norm) -> [(name_norm, prices)]
+_set_dict  = {}
 
-# ---------- Normalization ----------
+# Price lookup globals
+_price_map = {}                  # (name_norm, set_norm, num_norm) -> {market, psa9, psa10, ...}
+_price_index = set()             # set of (name_norm, num_norm) that exist in CSV (any set)
+_by_name_num = {}                # (name_norm, num_norm) -> list[(set_norm, val)]
+_price_index_by_setnum = {}      # (set_norm, num_norm) -> [(name_norm, prices)]  (kept if you use it elsewhere)
+
+# --- Normalization ------------------------------------------------------------
 _alnum = re.compile(r'[^a-z0-9]+')
 
-# Variant/printing descriptors that should NOT be part of the name key
+# Words/markers that should *not* be part of the name key.
+# (Added "gold star" family here)
 _VARIANT_WORDS = {
     'reverse', 'rev', 'reverse holo', 'rev holo', 'reverse-holo',
     'holo', 'holofoil', 'foil', 'rainbow foil', 'galaxy', 'cosmos',
@@ -71,6 +45,8 @@ _VARIANT_WORDS = {
     'jumbo', 'oversize', 'shattered glass', 'cracked ice', 'e-reader', 'mini',
     'gold star', 'gold-star', 'goldstar'
 }
+
+_GOLD_STAR_RE = re.compile(r'\bgold\s*-\s*star\b|\bgold\s*star\b|\bgoldstar\b', re.IGNORECASE)
 
 def _unescape_decode(s: str) -> str:
     """Decode HTML entities and percent-encoding early (e.g., %27, &amp;)."""
@@ -92,12 +68,14 @@ def _tokenize(s: str) -> str:
     return s
 
 def _strip_variant_tags(text: str) -> str:
-    """Remove bracketed/suffixed variant descriptors from the card title when safe."""
+    """
+    Remove bracketed/suffixed variant descriptors from the card title when safe.
+    Handles things like "[Reverse Holo]" and "[Gold Star]".
+    """
     if not text:
         return text
     s = str(text)
 
-    # FIXED: pass `s` to re.sub
     def _repl(m):
         inside = m.group(1)
         low = inside.lower()
@@ -105,9 +83,10 @@ def _strip_variant_tags(text: str) -> str:
             return ''
         return m.group(0)
 
+    # remove [ ... ] chunks that are variant-y
     s = re.sub(r'\[(.*?)\]', _repl, s)
 
-    # Also drop common variant words that appear as loose suffix/prefix (e.g., " - Reverse Holo")
+    # also drop loose variant words that appear as prefix/suffix
     for w in list(_VARIANT_WORDS):
         s = re.sub(r'(?:^|\s|[-–—])' + re.escape(w) + r'(?:$|\b)', ' ', s, flags=re.IGNORECASE)
 
@@ -117,16 +96,19 @@ def _strip_variant_tags(text: str) -> str:
 def _normalize_set(text: str) -> str:
     """
     Make set names comparable across CSV and local data.
+    Canonicalizes common variants (e.g., 'Expedition Base Set' -> 'expedition').
     """
     s = _tokenize(_unescape_decode(text))
 
-    # Canonicalize known set aliases (fixes Expedition)
-    # Collapse variations like 'Expedition Base Set', 'Pokemon Expedition', etc. -> 'expedition'
-    s = re.sub(r'\bexpedition base(?: set)?\b', 'expedition', s)
-    s = re.sub(r'\bpokemon expedition\b', 'expedition', s)
+    # Canonicalize known aliases
+    s = re.sub(r'\bexpedition base(?: set)?\b', 'expedition', s, flags=re.IGNORECASE)
+    s = re.sub(r'\bpokemon expedition\b', 'expedition', s, flags=re.IGNORECASE)
 
+    # Remove filler words often present in CSVs
     s = re.sub(r'\b(1st|first|edition|shadowless)\b', '', s)
     s = re.sub(r'\b(pokemon|tcg|the|trading|card|game|series)\b', '', s)
+
+    # Series patterns
     series_patterns = [
         r'diamond\s*(?:&|and)?\s*pearl', r'black\s*(?:&|and)?\s*white',
         r'sun\s*(?:&|and)?\s*moon', r'sword\s*(?:&|and)?\s*shield',
@@ -134,22 +116,23 @@ def _normalize_set(text: str) -> str:
     ]
     for pat in series_patterns:
         s = re.sub(r'\b' + pat + r'\b', '', s)
+
     s = re.sub(r'\b(?:dp|bw|xy|sm|swsh|sv|hgss)\b', '', s)
     s = re.sub(r'\b(wizards|wotc)\b', '', s)
-    s = ' '.join([word for word in s.split() if word != 'set'])
+    s = ' '.join(word for word in s.split() if word != 'set')
     s = re.sub(r'\bpromos\b', 'promo', s)
     s = re.sub(r'\s+', ' ', s).strip()
     return s
 
 def _normalize_number(num) -> str:
-    """Normalize card number by taking the part before any slash and lowercasing."""
+    """Normalize card number by taking the part before slash and removing '#'. """
     s = str(num or '').strip().lower()
     s = s.split('/')[0]
     s = s.lstrip('#')
     return s
 
 def _digits_only(num_norm: str) -> str:
-    """Extract digits only (e.g., 'bw83' -> '83')."""
+    """Extract digits only (e.g., 'H6' -> '6')."""
     return re.sub(r'[^0-9]', '', num_norm or '')
 
 def _name_norm(name: str) -> str:
@@ -164,13 +147,25 @@ def _name_norm_raw(name: str) -> str:
 def _key(name, set_name, number):
     return (_name_norm(name), _normalize_set(set_name), _normalize_number(number))
 
-# ---------- Public API ----------
+# --- Similarity for fuzzy set match ------------------------------------------
+def _token_set(s: str):
+    return set((s or '').split())
+
+def _set_similarity(a: str, b: str) -> float:
+    """Blend Jaccard over tokens with SequenceMatcher for robust fuzzy matching."""
+    ta, tb = _token_set(a), _token_set(b)
+    jac = (len(ta & tb) / max(1, len(ta | tb))) if (ta and tb) else 0.0
+    seq = SequenceMatcher(None, a, b).ratio()
+    return 0.6 * jac + 0.4 * seq
+
+# --- Load local sets & cards --------------------------------------------------
 def load_data():
+    """Load local JSON for sets and cards, then price data."""
     global _card_data, _card_dict, _set_dict
     if _card_data:
         return
 
-    # Load sets
+    # Sets
     print(f"Loading sets from: {SETS_PATH}")
     if os.path.isdir(SETS_PATH):
         for filename in os.listdir(SETS_PATH):
@@ -184,7 +179,7 @@ def load_data():
                     except json.JSONDecodeError:
                         print(f"Warning: Could not decode JSON from set file {filename}")
 
-    # Load cards
+    # Cards
     print(f"Loading cards from: {DATA_PATH}")
     if os.path.isdir(DATA_PATH):
         for filename in os.listdir(DATA_PATH):
@@ -199,8 +194,8 @@ def load_data():
                     cards_in_file = json.load(f)
                     for card in cards_in_file:
                         card['set'] = set_for_this_file
-                        card['_normalized_name'] = _name_norm(card.get('name'))
-                        card['_normalized_set'] = _normalize_set(card['set'].get('name', ''))
+                        card['_normalized_name']   = _name_norm(card.get('name'))
+                        card['_normalized_set']    = _normalize_set(card['set'].get('name', ''))
                         card['_normalized_number'] = _normalize_number(card.get('number'))
                         card['_normalized_number_digits'] = _digits_only(card['_normalized_number'])
                         _card_data.append(card)
@@ -213,79 +208,60 @@ def load_data():
     else:
         print(f"Successfully loaded {len(_card_data)} cards and {len(_set_dict)} sets into memory.")
 
-    _load_price_data()
+    _load_price_data()  # load/refresh prices after cards
+    # (Structure mirrors your original file.) :contentReference[oaicite:3]{index=3}
 
+# --- Local search helpers (unchanged logic, tidied) ---------------------------
 def search_local_cards(query, limit=12):
-    """
-    Scores and ranks cards based on query matching name, set, and number to find the best result.
-    """
+    """Score and rank local cards by query."""
     if not query:
         return []
 
-    # 1. Parse query into text tokens and number digits
     search_num_digits = "".join(re.findall(r'\d+', query))
     query_text = _tokenize(re.sub(r'\d+', ' ', query))
     search_tokens = set(t for t in query_text.split() if t)
-
     if not search_tokens and not search_num_digits:
         return []
 
-    # 2. Score every card in the database based on relevance
     results_with_scores = []
     for card in _card_data:
         score = 0.0
-        card_name_tokens = set(card['_normalized_name'].split())
-        card_set_tokens = set(card['_normalized_set'].split())
-        card_num_digits = card['_normalized_number_digits']
-        
-        # Combine card's name and set for text matching
-        card_all_text_tokens = card_name_tokens.union(card_set_tokens)
+        name_tokens = set(card['_normalized_name'].split())
+        set_tokens  = set(card['_normalized_set'].split())
+        num_digits  = card['_normalized_number_digits']
 
-        # Score based on how many search tokens have a partial match in the card's text
+        # partial text matches (name + set)
+        all_tokens = name_tokens | set_tokens
         text_match_count = 0
         if search_tokens:
             for s_token in search_tokens:
-                for c_token in card_all_text_tokens:
-                    if s_token in c_token:  # e.g., "char" in "charizard"
+                for c_token in all_tokens:
+                    if s_token in c_token:
                         text_match_count += 1
                         break
-        
-        # If there are text tokens to search, but none matched, skip this card
         if search_tokens and text_match_count == 0:
             continue
 
-        # Main score is now based on the number of partial matches
         score += 50 * text_match_count
+        score += 30 * len(search_tokens & name_tokens)
+        score += 20 * len(search_tokens & set_tokens)
 
-        # Score name match: bonus for more query tokens found in the name
-        name_match_score = len(search_tokens.intersection(card_name_tokens))
-        score += 30 * name_match_score
-
-        # Score set match: bonus for more query tokens found in the set
-        set_match_score = len(search_tokens.intersection(card_set_tokens))
-        score += 20 * set_match_score
-        
-        # Huge bonus for exact number match
-        if search_num_digits and card_num_digits == search_num_digits:
+        if search_num_digits and num_digits == search_num_digits:
             score += 50
 
-        # Penalize for cards with many extra words not in the query
-        unmatched_tokens = len(card_name_tokens - search_tokens)
+        unmatched_tokens = len(name_tokens - search_tokens)
         score -= 5 * unmatched_tokens
 
         if score > 0:
-            # Use rarity as a tie-breaker (e.g., holo > non-holo)
             rarity = (card.get('rarity') or '').lower()
-            tie_breaker = 0
-            if 'rare' in rarity: tie_breaker = 1
-            if 'holo' in rarity: tie_breaker = 2
-            if 'ultra' in rarity: tie_breaker = 3
-            results_with_scores.append((score, tie_breaker, card))
+            tie = 0
+            if 'rare' in rarity:  tie = 1
+            if 'holo' in rarity:  tie = 2
+            if 'ultra' in rarity: tie = 3
+            results_with_scores.append((score, tie, card))
 
-    # 3. Sort by score and tie-breaker to get the most relevant cards at the top
     results_with_scores.sort(key=lambda x: (x[0], x[1]), reverse=True)
-    
-    return [card for score, tie_breaker, card in results_with_scores[:limit]]
+    return [c for _, __, c in results_with_scores[:limit]]
 
 def get_local_card_by_id(card_id):
     return _card_dict.get(card_id)
@@ -305,17 +281,20 @@ def get_local_related_cards(set_id, rarity, current_card_id, count=5):
         return random.sample(related, count)
     return related
 
-# ---------- Price overrides ----------
+# --- Price overrides: public API ---------------------------------------------
 def get_price_override(name, set_name, number):
-    """Return the price dict for a given (name, set, number) using robust matching.
-    Exact match first, then fallbacks (raw-name & digits-only), then fuzzy set-match
-    restricted to rows that share the same (name, number)."""
+    """
+    Return the price dict for (name, set, number) using:
+      1) exact match on normalized name/set/number
+      2) fallbacks: raw-name & digits-only number
+      3) fuzzy set match limited to rows sharing the same (name, number)
+    """
     global _price_map, _price_index
     name_norm = _name_norm(name)
     set_norm  = _normalize_set(set_name)
     num_norm  = _normalize_number(number)
 
-    # --- 1) Exact & standard fallbacks (existing logic) ---
+    # Exact + standard fallbacks
     for nm in (name_norm, _name_norm_raw(name)):
         for nn in (num_norm, _digits_only(num_norm)):
             if not nn:
@@ -324,30 +303,29 @@ def get_price_override(name, set_name, number):
             if v:
                 return v
 
-    # --- 2) Fuzzy set match limited to same (name, number) ---
+    # Fuzzy set, but only among rows with same (name, number)
     nm_candidates = {name_norm, _name_norm_raw(name)}
     nn_candidates = {num_norm, _digits_only(num_norm)}
     nn_candidates = {x for x in nn_candidates if x}
 
     best = None
     best_score = 0.0
-    # Use index for candidates
     for nm_k in nm_candidates:
         for nn_k in nn_candidates:
-            cand_list = _by_name_num.get((nm_k, nn_k), [])
-            for (set_k, val) in cand_list:
+            for (set_k, val) in _by_name_num.get((nm_k, nn_k), []):
                 score = _set_similarity(set_norm, set_k)
                 if score > best_score:
                     best_score = score
                     best = val
 
-    if best and best_score >= 0.72:  # conservative threshold
+    if best and best_score >= 0.72:
         return best
 
-    return None
+    return None  # not found
 
 def get_price_override_ex(name, set_name, number):
-    """Like get_price_override but returns (value, reason).
+    """
+    Same as get_price_override but returns (value, reason)
     reason ∈ {'found', 'unmatched_set', 'absent_in_csv'}
     """
     global _price_map, _price_index
@@ -355,24 +333,21 @@ def get_price_override_ex(name, set_name, number):
     if val is not None:
         return val, 'found'
 
-    # Normalize variants
-    nm_vars = { _name_norm(name), _name_norm_raw(name) }
+    nm_vars = {_name_norm(name), _name_norm_raw(name)}
     nn_raw  = _normalize_number(number)
-    nn_vars = { nn_raw, _digits_only(nn_raw) }
+    nn_vars = {nn_raw, _digits_only(nn_raw)}
     nn_vars = {x for x in nn_vars if x}
 
-    # Check if CSV has any rows for this (name, number) ignoring set
     exists_any = any(((nm, nn) in _price_index) for nm in nm_vars for nn in nn_vars)
     if exists_any:
         return None, 'unmatched_set'
     else:
         return None, 'absent_in_csv'
 
-
 def refresh_price_data():
     _load_price_data()
 
-# ---------- Internal (price loading) ----------
+# --- Price loading internals --------------------------------------------------
 def _find_latest_price_file():
     if not os.path.isdir(PRICES_DIR):
         return None
@@ -431,9 +406,9 @@ def _insert_price_key(price_map, key, price_obj, score):
         price_map[key] = new_obj
 
 def _load_price_data():
-    global _price_map
+    """Read the newest CSV/XLSX from PRICES_DIR and build lookup indexes."""
+    global _price_map, _price_index, _by_name_num
     _price_map = {}
-    global _price_index, _by_name_num
     _price_index = set()
     _by_name_num = {}
 
@@ -444,6 +419,7 @@ def _load_price_data():
 
     print(f"Loading price overrides from: {path}")
 
+    # Read rows
     rows = []
     try:
         if pd is None:
@@ -471,6 +447,7 @@ def _load_price_data():
             print(f"WARNING: Fallback CSV read failed: {e2}")
             rows = []
 
+    # column resolver
     def _col(d, *cands):
         for c in cands:
             for k in list(d.keys()):
@@ -488,21 +465,21 @@ def _load_price_data():
         psa10_k  = _col(row, 'psa 10 price', 'psa10 price', 'psa10', 'psa10_price')
 
         card_name  = (row.get(name_k) or "").strip() if name_k else ""
-        set_name   = (row.get(set_k) or "").strip() if set_k else ""
+        set_name   = (row.get(set_k) or "").strip()  if set_k  else ""
         number_raw = str(row.get(num_k) or "").strip() if num_k else ""
 
-        # Decode HTML/percent-encodings early (e.g., Champion%27S Path)
+        # Decode encodings early (e.g., Champion%27S Path)
         card_name = _unescape_decode(card_name)
         set_name  = _unescape_decode(set_name)
 
         if set_name.lower().startswith("pokemon "):
             set_name = set_name.split(" ", 1)[1].strip()
 
-        # If number is missing, pull it from "#..." at the end of the title
+        # If number missing, pull "#..." from name
         if not number_raw and "#" in card_name:
             parts = card_name.rsplit("#", 1)
             if len(parts) == 2:
-                card_name = parts[0].strip()
+                card_name  = parts[0].strip()
                 number_raw = parts[1].strip()
 
         raw_price   = _parse_price(row.get(raw_k))  if raw_k  else None
@@ -512,7 +489,6 @@ def _load_price_data():
         if not card_name or not set_name or not number_raw:
             continue
 
-        # Two name variants for better matching
         name_norm_base = _name_norm(card_name)     # variant-stripped
         name_norm_raw  = _name_norm_raw(card_name) # raw-tokenized
         set_norm       = _normalize_set(set_name)
@@ -526,25 +502,32 @@ def _load_price_data():
             "source": "excel"
         }
 
-        # Prefer non-variant rows and those with more price fields
+        # Prefer non-variant rows + richer rows
         is_variant = _row_is_variant(card_name)
         richness   = (1 if raw_price is not None else 0) + (2 if psa9_price is not None else 0) + (3 if psa10_price is not None else 0)
         score      = richness + (2 if not is_variant else 0)
 
+        # Index with both base and raw names
         for nm in {name_norm_base, name_norm_raw}:
-            # record index for (name, number) presence
             _price_index.add((nm, num_norm))
-            price_key = (nm, set_norm, num_norm)
-            _insert_price_key(_price_map, price_key, price_obj, score)
+            _insert_price_key(_price_map, (nm, set_norm, num_norm), price_obj, score)
             _by_name_num.setdefault((nm, num_norm), []).append((set_norm, price_obj))
-            # Extra fallback using digits-only number (e.g., 'H6' -> '6')
-            try:
-                num_digits = _digits_only(num_norm)
+
+            # digits-only fallback (e.g., H6 -> 6)
+            num_digits = _digits_only(num_norm)
+            if num_digits and num_digits != num_norm:
+                _insert_price_key(_price_map, (nm, set_norm, num_digits), price_obj, score - 0.10)
+
+            # --- Gold Star fallback: also index a version with 'gold star' removed ---
+            nm_no_gold = _GOLD_STAR_RE.sub(' ', nm).strip()
+            if nm_no_gold != nm:
+                nm_no_gold = re.sub(r'\s+', ' ', nm_no_gold)
+                _price_index.add((nm_no_gold, num_norm))
+                _insert_price_key(_price_map, (nm_no_gold, set_norm, num_norm), price_obj, score - 0.05)
+
                 if num_digits and num_digits != num_norm:
-                    price_key_digits = (nm, set_norm, num_digits)
-                    _insert_price_key(_price_map, price_key_digits, price_obj, score - 0.1)
-            except Exception:
-                pass
-            loaded += 1
+                    _insert_price_key(_price_map, (nm_no_gold, set_norm, num_digits), price_obj, score - 0.15)
+
+        loaded += 1
 
     print(f"Loaded {loaded} price override rows (with fallback keys).")
