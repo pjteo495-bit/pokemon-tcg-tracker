@@ -36,18 +36,17 @@ def _repair_inflated_numeric(n: float) -> float:
     return v
 
 
+
 def _fix_item_price(item: dict) -> dict:
     if not isinstance(item, dict):
         return item
     raw = item.get("price", "")
     src = (item.get("source") or item.get("website") or "").lower()
-    # Numeric price path
     if isinstance(raw, (int, float)):
         n = float(raw)
         n = _repair_vendora_numeric(n) if src == "vendora" else _repair_inflated_numeric(n)
         item["price"] = format_eur(n)
         return item
-    # String price path
     n = parse_eur_strict(raw)
     if n is None:
         return item
@@ -56,6 +55,7 @@ def _fix_item_price(item: dict) -> dict:
         n = n / 100.0
     item["price"] = format_eur(n)
     return item
+
 
 
 
@@ -298,7 +298,7 @@ def api_sealed_products():
 def api_global_related():
     title = (request.args.get("title") or "").strip()
     if not title:
-        return jsonify({"items": []})
+        return jsonify({\"items\": [ _fix_item_price(x) for x in [] ]})
 
     sig_list = _signature_tokens(title)         # e.g., ["journey", "together"]
     sig = set(sig_list)
@@ -482,7 +482,7 @@ def api_price_history():
 def api_related_products():
     title = request.args.get("title", "").strip()
     original_url = request.args.get("url", "").strip()
-    if not title: return jsonify({"items": []})
+    if not title: return jsonify({\"items\": [ _fix_item_price(x) for x in [] ]})
     items = scraper.get_related_products(title, original_url, limit=8)
     return jsonify({"items": items})
 
