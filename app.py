@@ -36,17 +36,18 @@ def _repair_inflated_numeric(n: float) -> float:
     return v
 
 
-
 def _fix_item_price(item: dict) -> dict:
     if not isinstance(item, dict):
         return item
     raw = item.get("price", "")
     src = (item.get("source") or item.get("website") or "").lower()
+    # Numeric price path
     if isinstance(raw, (int, float)):
         n = float(raw)
         n = _repair_vendora_numeric(n) if src == "vendora" else _repair_inflated_numeric(n)
         item["price"] = format_eur(n)
         return item
+    # String price path
     n = parse_eur_strict(raw)
     if n is None:
         return item
@@ -55,7 +56,6 @@ def _fix_item_price(item: dict) -> dict:
         n = n / 100.0
     item["price"] = format_eur(n)
     return item
-
 
 
 
@@ -387,129 +387,64 @@ def api_global_related():
 # ---------- Market / history / other routes (unchanged) ----------
 @app.route("/api/market-status")
 def api_market_status():
-    try:
-        
-
-            history_dir = "Greek_Prices_History"
-
-            categories = {
-
-                "Booster Packs": ["Booster Pack"],
-
-                "Booster Box": ["Booster Box"],
-
-                "Elite Trainer Box": ["Elite Trainer Box", "ETB"],
-
-                "Binders": ["Binder"],
-
-                "Collections": ["Collection"],
-
-                "Tins": ["Tin"],
-
-                "Blisters": ["Blister"],
-
-                "Sleeves": ["Sleeves"],
-
-                "Booster Bundles": ["Booster Bundle"],
-
-                "Decks": ["Deck"]
-
-            }
-
-            cutoff_date = datetime.now() - timedelta(days=30)
-
-            all_data = []
-
-            files = glob.glob(os.path.join(history_dir, "*.xlsx")) + glob.glob(os.path.join(history_dir, "*.csv"))
-
-            for file_path in files:
-
-                try:
-
-                    file_datetime = parse_date_from_filename(os.path.splitext(os.path.basename(file_path))[0])
-
-                    if not file_datetime or file_datetime < cutoff_date:
-
-                        continue
-
-                    df = pd.read_csv(file_path, encoding='utf-8-sig') if file_path.endswith('.csv') else pd.read_excel(file_path)
-
-                    df.columns = [str(c).lower().strip() for c in df.columns]
-
-                    df['date'] = file_datetime
-
-                    all_data.append(df)
-
-                except Exception as e:
-
-                    print(f"Skipping history file {file_path}: {e}")
-
-            if not all_data:
-
-                return jsonify({"error": "No recent history data found"}), 404
-
-            full_history = pd.concat(all_data, ignore_index=True)
-
-            title_col = next((c for c in ['item_title', 'title', 'name'] if c in full_history.columns), None)
-
-            price_col = next((c for c in ['price', 'current_price'] if c in full_history.columns), None)
-
-            if not title_col or not price_col:
-
-                return jsonify({"error": "Could not find title/price columns"}), 500
-
-            full_history[price_col] = pd.to_numeric(
-
-                full_history[price_col].astype(str).str.replace('[€,]', '', regex=True),
-
-                errors='coerce'
-
-            )
-
-            full_history.dropna(subset=[price_col], inplace=True)
-
-            market_status = []
-
-            for category_name, keywords in categories.items():
-
-                cat_df = full_history[full_history[title_col].str.contains('|'.join(keywords), case=False, na=False)]
-
-                if cat_df.empty: continue
-
-                changes = []
-
-                for _, group in cat_df.groupby(title_col):
-
-                    if len(group) > 1:
-
-                        group = group.sort_values('date')
-
-                        start_price = group.iloc[0][price_col]
-
-                        end_price   = group.iloc[-1][price_col]
-
-                        if start_price > 0:
-
-                            changes.append(((end_price - start_price) / start_price) * 100)
-
-                status, explanation = 'yellow', '(Prices Stable)'
-
-                if changes:
-
-                    avg_change = sum(changes) / len(changes)
-
-                    if   avg_change >  2.5: status, explanation = 'green', '(Prices Rising)'
-
-                    elif avg_change < -2.5: status, explanation = 'red',   '(Prices Lowering)'
-
-                market_status.append({"category": category_name, "status": status, "explanation": explanation})
-
-            return jsonify(market_status)
-    except Exception as e:
-        import logging
-        logging.exception('Error in /api/market-status: %s', e)
-        cats = ["Booster Packs","Booster Box","Elite Trainer Box","Binders","Collections","Tins","Blisters","Sleeves","Booster Bundles","Decks"]
-        return jsonify([{"category": c, "status":"yellow","explanation":"(No data)"} for c in cats])
+    history_dir = "Greek_Prices_History"
+    categories = {
+        "Booster Packs": ["Booster Pack"],
+        "Booster Box": ["Booster Box"],
+        "Elite Trainer Box": ["Elite Trainer Box", "ETB"],
+        "Binders": ["Binder"],
+        "Collections": ["Collection"],
+        "Tins": ["Tin"],
+        "Blisters": ["Blister"],
+        "Sleeves": ["Sleeves"],
+        "Booster Bundles": ["Booster Bundle"],
+        "Decks": ["Deck"]
+    }
+    cutoff_date = datetime.now() - timedelta(days=30)
+    all_data = []
+    files = glob.glob(os.path.join(history_dir, "*.xlsx")) + glob.glob(os.path.join(history_dir, "*.csv"))
+    for file_path in files:
+        try:
+            file_datetime = parse_date_from_filename(os.path.splitext(os.path.basename(file_path))[0])
+            if not file_datetime or file_datetime < cutoff_date:
+                continue
+            df = pd.read_csv(file_path, encoding='utf-8-sig') if file_path.endswith('.csv') else pd.read_excel(file_path)
+            df.columns = [str(c).lower().strip() for c in df.columns]
+            df['date'] = file_datetime
+            all_data.append(df)
+        except Exception as e:
+            print(f"Skipping history file {file_path}: {e}")
+    if not all_data:
+        return jsonify({"error": "No recent history data found"}), 404
+    full_history = pd.concat(all_data, ignore_index=True)
+    title_col = next((c for c in ['item_title', 'title', 'name'] if c in full_history.columns), None)
+    price_col = next((c for c in ['price', 'current_price'] if c in full_history.columns), None)
+    if not title_col or not price_col:
+        return jsonify({"error": "Could not find title/price columns"}), 500
+    full_history[price_col] = pd.to_numeric(
+        full_history[price_col].astype(str).str.replace('[€,]', '', regex=True),
+        errors='coerce'
+    )
+    full_history.dropna(subset=[price_col], inplace=True)
+    market_status = []
+    for category_name, keywords in categories.items():
+        cat_df = full_history[full_history[title_col].str.contains('|'.join(keywords), case=False, na=False)]
+        if cat_df.empty: continue
+        changes = []
+        for _, group in cat_df.groupby(title_col):
+            if len(group) > 1:
+                group = group.sort_values('date')
+                start_price = group.iloc[0][price_col]
+                end_price   = group.iloc[-1][price_col]
+                if start_price > 0:
+                    changes.append(((end_price - start_price) / start_price) * 100)
+        status, explanation = 'yellow', '(Prices Stable)'
+        if changes:
+            avg_change = sum(changes) / len(changes)
+            if   avg_change >  2.5: status, explanation = 'green', '(Prices Rising)'
+            elif avg_change < -2.5: status, explanation = 'red',   '(Prices Lowering)'
+        market_status.append({"category": category_name, "status": status, "explanation": explanation})
+    return jsonify(market_status)
 
 @app.route("/api/price-history")
 def api_price_history():
@@ -549,7 +484,6 @@ def api_related_products():
     original_url = request.args.get("url", "").strip()
     if not title: return jsonify({"items": []})
     items = scraper.get_related_products(title, original_url, limit=8)
-    items = [ _fix_item_price(x) for x in items ]
     return jsonify({"items": items})
 
 @app.route("/api/home")
