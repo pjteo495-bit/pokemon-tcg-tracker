@@ -1,27 +1,4 @@
-# Force-refresh deployment 2025-08-28-v10-GLOBAL-RELATED
-import sys, re, os, csv, glob, random, threading, unicodedata
-from flask import Flask, render_template, request, jsonify
-from datetime import datetime
-import re, timedelta
-import pandas as pd
-import pytz
-
-# --- Local Imports ---
-try:
-    import scraper
-    import scraper_pokemon
-    import data_loader
-    data_loader.load_data()
-except ImportError:
-    print("Warning: Local modules (scraper, scraper_pokemon, data_loader) not found.")
-    class Dummy:
-        def __getattr__(self, _): return lambda *a, **k: None
-    scraper = Dummy(); scraper_pokemon = Dummy(); data_loader = Dummy()
-
-app = Flask(__name__, template_folder="templates")
-
-# ---- Config ----
-USD_TO_EUR = float(os.environ.get("USD_TO_EUR", "0.86"))
+import re
 
 # --- Price normalization helpers (API guard) ---
 _PRICE_BAD_A = re.compile(r"^\s*\d{1,2}\.\d{3},00\s*$")  # e.g. "2.900,00"
@@ -53,6 +30,31 @@ def _fix_item_price(item: dict) -> dict:
         n = n / 100.0
     item["price"] = format_eur(n)
     return item
+
+# Force-refresh deployment 2025-08-28-v10-GLOBAL-RELATED
+import sys, re, os, csv, glob, random, threading, unicodedata
+from flask import Flask, render_template, request, jsonify
+from datetime import datetime
+import re, timedelta
+import pandas as pd
+import pytz
+
+# --- Local Imports ---
+try:
+    import scraper
+    import scraper_pokemon
+    import data_loader
+    data_loader.load_data()
+except ImportError:
+    print("Warning: Local modules (scraper, scraper_pokemon, data_loader) not found.")
+    class Dummy:
+        def __getattr__(self, _): return lambda *a, **k: None
+    scraper = Dummy(); scraper_pokemon = Dummy(); data_loader = Dummy()
+
+app = Flask(__name__, template_folder="templates")
+
+# ---- Config ----
+USD_TO_EUR = float(os.environ.get("USD_TO_EUR", "0.86"))
 
 # ---------- Generic helpers ----------
 def parse_date_from_filename(name):
