@@ -410,6 +410,33 @@
       if (!mobileNav.contains(e.target) && !openBtn.contains(e.target)) mobileNav.classList.remove('open');
   });
 
+  
+  // --- PRICE PARSING & DISPLAY HELPERS ---
+  function parsePriceEUR(raw) {
+    if (raw == null) return null;
+    let s = String(raw).trim().replace(/[€\s]/g, "").replace(/EUR/i,"");
+    if (s.includes(".") && s.includes(",") && s.indexOf(".") < s.indexOf(",")) {
+      s = s.replace(/\.(?=\d{3}(?:\D|$))/g, "");
+      s = s.replace(",", ".");
+    } else if (s.includes(",") && !s.includes(".")) {
+      s = s.replace(",", ".");
+    }
+    const m = s.match(/\d+(?:\.\d+)?/);
+    return m ? Number.parseFloat(m[0]) : null;
+  }
+  function repairIfInflated(raw, num) {
+    const txt = String(raw || "");
+    const looksLikeX100 = /^\s*\d{1,2}\.\d{3},00\s*$/.test(txt) || /^\s*\d{3},00\s*$/.test(txt);
+    if (looksLikeX100 && num >= 100) return num / 100;
+    return num;
+  }
+  function formatPrice(raw) {
+    let n = parsePriceEUR(raw);
+    if (!Number.isFinite(n)) return raw ?? "";
+    n = repairIfInflated(raw, n);
+    return n.toLocaleString('el-GR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\u00A0/g,' ') + " €";
+  }
+
   // --- SHARED CARD RENDER ---
   function cardHTML(p) {
       const safeTitle = (p.title || '').replace(/"/g, '&quot;');
@@ -433,7 +460,7 @@
             <img src="${p.image_url || ''}" loading="lazy" alt="${safeTitle}" onerror="this.style.visibility='hidden'">
           </a>
           <div class="title">${safeTitle}</div>
-          <div class="price">${p.price || ''}</div>
+          <div class="price">${formatPrice(p.price)}</div>
           <div class="card-buttons">
               <a class="view" href="${detailUrl}" ${target}>${buttonText}</a>
           </div>
@@ -619,7 +646,7 @@
           <div class="sug-item" data-title="${(it.title||'').replace(/"/g,'&quot;')}">
             <img src="${it.image_url||''}" alt="">
             <div>${it.title||''}</div>
-            <div>${it.price||''}</div>
+            <div>${formatPrice(it.price)}</div>
           </div>`).join('');
         suggestBox.style.display='block';
       }catch(e){ console.error(e); }
@@ -754,6 +781,12 @@
         if (queryFromUrl) { qInput.value = queryFromUrl; currentQuery = queryFromUrl; }
         fetchPage(1, false);
     });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const itemPrice = document.querySelector('.item-info .price');
+    if (itemPrice) itemPrice.textContent = formatPrice(itemPrice.textContent);
+  });
+
 </script>
 {% endif %}
 
