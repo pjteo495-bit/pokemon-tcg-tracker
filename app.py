@@ -298,7 +298,7 @@ def api_sealed_products():
 def api_global_related():
     title = (request.args.get("title") or "").strip()
     if not title:
-        return jsonify({\"items\": [ _fix_item_price(x) for x in [] ]})
+        return jsonify({"items": []})
 
     sig_list = _signature_tokens(title)         # e.g., ["journey", "together"]
     sig = set(sig_list)
@@ -482,7 +482,7 @@ def api_price_history():
 def api_related_products():
     title = request.args.get("title", "").strip()
     original_url = request.args.get("url", "").strip()
-    if not title: return jsonify({\"items\": [ _fix_item_price(x) for x in [] ]})
+    if not title: return jsonify({"items\": [ _fix_item_price(x) for x in [] ]})
     items = scraper.get_related_products(title, original_url, limit=8)
     return jsonify({"items": items})
 
