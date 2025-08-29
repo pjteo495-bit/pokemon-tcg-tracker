@@ -34,8 +34,8 @@ def _fix_item_price(item: dict) -> dict:
 # Force-refresh deployment 2025-08-28-v10-GLOBAL-RELATED
 import sys, re, os, csv, glob, random, threading, unicodedata
 from flask import Flask, render_template, request, jsonify
-from datetime import datetime
-import re, timedelta
+from datetime import datetime, timedelta
+import re
 import pandas as pd
 import pytz
 
