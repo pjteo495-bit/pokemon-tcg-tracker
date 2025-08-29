@@ -25,6 +25,8 @@ def format_eur(n: float) -> str:
     return "€" + f"{n:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def _repair_inflated_numeric(n: float) -> float:
+    # (unchanged)
+
     try:
         v = float(n)
     except Exception:
@@ -33,14 +35,19 @@ def _repair_inflated_numeric(n: float) -> float:
         return v / 100.0
     return v
 
+
 def _fix_item_price(item: dict) -> dict:
     if not isinstance(item, dict):
         return item
     raw = item.get("price", "")
+    src = (item.get("source") or item.get("website") or "").lower()
+    # Numeric price path
     if isinstance(raw, (int, float)):
-        n = _repair_inflated_numeric(float(raw))
+        n = float(raw)
+        n = _repair_vendora_numeric(n) if src == "vendora" else _repair_inflated_numeric(n)
         item["price"] = format_eur(n)
         return item
+    # String price path
     n = parse_eur_strict(raw)
     if n is None:
         return item
@@ -49,6 +56,8 @@ def _fix_item_price(item: dict) -> dict:
         n = n / 100.0
     item["price"] = format_eur(n)
     return item
+
+
 
 
 
@@ -553,3 +562,14 @@ def api_tcg_random_trending():
 
 if __name__ == "__main__":
     app.run(debug=True, use_reloader=True)
+
+
+def _repair_vendora_numeric(n: float) -> float:
+    try:
+        v = float(n)
+    except Exception:
+        return n
+    # If Vendora and price looks like x100 for sub-€4 items, fix it
+    if v >= 50 and v < 400 and (v / 100.0) < 4.0:
+        return v / 100.0
+    return v
