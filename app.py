@@ -1,4 +1,10 @@
+# Force-refresh deployment 2025-08-28-v10-GLOBAL-RELATED
+import sys, re, os, csv, glob, random, threading, unicodedata
 import re
+from flask import Flask, render_template, request, jsonify
+from datetime import datetime, timedelta
+import pandas as pd
+import pytz
 
 # --- Price normalization helpers (API guard) ---
 _PRICE_BAD_A = re.compile(r"^\s*\d{1,2}\.\d{3},00\s*$")  # e.g. "2.900,00"
@@ -31,13 +37,7 @@ def _fix_item_price(item: dict) -> dict:
     item["price"] = format_eur(n)
     return item
 
-# Force-refresh deployment 2025-08-28-v10-GLOBAL-RELATED
-import sys, re, os, csv, glob, random, threading, unicodedata
-from flask import Flask, render_template, request, jsonify
-from datetime import datetime, timedelta
-import re
-import pandas as pd
-import pytz
+
 
 # --- Local Imports ---
 try:
