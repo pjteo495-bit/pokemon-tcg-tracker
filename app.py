@@ -482,8 +482,9 @@ def api_price_history():
 def api_related_products():
     title = request.args.get("title", "").strip()
     original_url = request.args.get("url", "").strip()
-    if not title: return jsonify({"items\": [ _fix_item_price(x) for x in [] ]})
+    if not title: return jsonify({"items": []})
     items = scraper.get_related_products(title, original_url, limit=8)
+    items = [ _fix_item_price(x) for x in items ]
     return jsonify({"items": items})
 
 @app.route("/api/home")
