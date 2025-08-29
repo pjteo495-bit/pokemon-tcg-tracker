@@ -425,11 +425,18 @@
     return m ? Number.parseFloat(m[0]) : null;
   }
   function repairIfInflated(raw, num) {
-    const txt = String(raw || "");
-    const looksLikeX100 = /^\s*\d{1,2}\.\d{3},00\s*$/.test(txt) || /^\s*\d{3},00\s*$/.test(txt);
-    if (looksLikeX100 && num >= 100) return num / 100;
-    return num;
+  const txt = String(raw ?? "");
+  const patternHit = /^\s*\d{1,2}\.\d{3},00\s*$/.test(txt) || /^\s*\d{3},00\s*$/.test(txt);
+  if (patternHit && num >= 100) return num / 100; // '2.900,00' => 29.00, '590,00' => 5.90
+  // If raw wasn't a string pattern (often numeric already), use numeric heuristics
+  if (!patternHit) {
+    // Vendora-style cents inflated: 0,99 => 99 (passed as 99)
+    if (num >= 50 && num < 400 && (num / 100) < 4.0) return num / 100; // 99 -> 0.99, 149 -> 1.49
+    // Generic x100 guard for mid/high values
+    if (num >= 500 && (num / 100) < 200) return num / 100; // 3690 -> 36.90, 1200 -> 12.00
   }
+  return num;
+}
   function formatPrice(raw) {
     let n = parsePriceEUR(raw);
     if (!Number.isFinite(n)) return raw ?? "";
