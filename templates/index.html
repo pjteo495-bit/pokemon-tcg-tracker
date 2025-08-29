@@ -410,47 +410,6 @@
       if (!mobileNav.contains(e.target) && !openBtn.contains(e.target)) mobileNav.classList.remove('open');
   });
 
-  
-  // --- PRICE PARSING & DISPLAY HELPERS ---
-  function parsePriceEUR(raw) {
-    if (raw == null) return null;
-    let s = String(raw).trim().replace(/[€\s]/g, "").replace(/EUR/i,"");
-    if (s.includes(".") && s.includes(",") && s.indexOf(".") < s.indexOf(",")) {
-      s = s.replace(/\.(?=\d{3}(?:\D|$))/g, "");
-      s = s.replace(",", ".");
-    } else if (s.includes(",") && !s.includes(".")) {
-      s = s.replace(",", ".");
-    }
-    const m = s.match(/\d+(?:\.\d+)?/);
-    return m ? Number.parseFloat(m[0]) : null;
-  }
-  function repairIfInflated(raw, num, source) {
-  const txt = String(raw ?? "").trim();
-  const hasSep = /[.,]/.test(txt);
-  const bareInt2to3 = /^[€\s]*\d{2,3}[€\s]*$/i.test(txt); // 2–3 digits, no separators
-  const patternHit = /^\s*\d{1,2}\.\d{3},00\s*$/.test(txt) || /^\s*\d{3},00\s*$/.test(txt);
-  if (patternHit) return num / 100; // '2.900,00' => 29.00, '590,00' => 5.90
-  if (!hasSep && bareInt2to3 && num >= 50 && num < 400) return num / 100; // 99 -> 0.99, 149 -> 1.49
-  return num;
-}\.\d{3},00\s*$/.test(txt) || /^\s*\d{3},00\s*$/.test(txt);
-  if (patternHit && num >= 100) return num / 100; // '2.900,00' => 29.00, '590,00' => 5.90
-  // If raw wasn't a string pattern (often numeric already), use numeric heuristics
-  if (!patternHit) {
-    // Vendora-style cents inflated: 0,99 => 99 (passed as 99)
-    if (num >= 50 && num < 400 && (num / 100) < 4.0) return num / 100; // 99 -> 0.99, 149 -> 1.49
-    // Generic x100 guard for mid/high values
-    if (num >= 500 && (num / 100) < 200) return num / 100; // 3690 -> 36.90, 1200 -> 12.00
-  }
-  return num;
-}
-  function formatPrice(raw, source) {
-  let n = parsePriceEUR(raw);
-  if (!Number.isFinite(n)) return raw ?? "";
-  n = repairIfInflated(raw, n, source);
-  return n.toLocaleString('el-GR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\u00A0/g,' ') + " €";
-}).replace(/\u00A0/g,' ') + " €";
-  }
-
   // --- SHARED CARD RENDER ---
   function cardHTML(p) {
       const safeTitle = (p.title || '').replace(/"/g, '&quot;');
@@ -458,7 +417,7 @@
 
       const itemParams = new URLSearchParams({
           title: p.title || '',
-          price: (() => { const n = parsePriceEUR(p.price); return Number.isFinite(n) ? repairIfInflated(p.price, n).toFixed(2) : (p.price || ''); })(),
+          price: p.price || '',
           image_url: p.image_url || '',
           url: p.url || '',
           source: p.source || ''
@@ -474,7 +433,7 @@
             <img src="${p.image_url || ''}" loading="lazy" alt="${safeTitle}" onerror="this.style.visibility='hidden'">
           </a>
           <div class="title">${safeTitle}</div>
-          <div class="price">${formatPrice(p.price, p.source)}</div>
+          <div class="price">${p.price || ''}</div>
           <div class="card-buttons">
               <a class="view" href="${detailUrl}" ${target}>${buttonText}</a>
           </div>
@@ -527,8 +486,6 @@
     const currentItem = {
       title: {{ item.title | tojson }},
       price: {{ item.price | tojson }}
-    ,
-      source: {{ item.source | tojson }}
     };
     
     const chartCanvas = document.getElementById('priceChart');
@@ -572,7 +529,6 @@
   }
 
     async function initializeDetailPage() {
-        const priceEl = document.querySelector('.item-info .price'); if (priceEl) { priceEl.textContent = formatPrice(currentItem.price, currentItem.source); }
         // Fetch Price History
         try {
             currentHistoryData = await fetchHistory(currentItem.title);
@@ -663,7 +619,7 @@
           <div class="sug-item" data-title="${(it.title||'').replace(/"/g,'&quot;')}">
             <img src="${it.image_url||''}" alt="">
             <div>${it.title||''}</div>
-            <div>${formatPrice(it.price, it.source)}</div>
+            <div>${it.price||''}</div>
           </div>`).join('');
         suggestBox.style.display='block';
       }catch(e){ console.error(e); }
@@ -798,12 +754,6 @@
         if (queryFromUrl) { qInput.value = queryFromUrl; currentQuery = queryFromUrl; }
         fetchPage(1, false);
     });
-
-  document.addEventListener('DOMContentLoaded', () => {
-    const itemPrice = document.querySelector('.item-info .price');
-    if (itemPrice) itemPrice.textContent = formatPrice(itemPrice.textContent);
-  });
-
 </script>
 {% endif %}
 
