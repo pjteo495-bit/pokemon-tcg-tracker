@@ -24,10 +24,23 @@ def parse_eur_strict(s: str):
 def format_eur(n: float) -> str:
     return "€" + f"{n:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
+def _repair_inflated_numeric(n: float) -> float:
+    try:
+        v = float(n)
+    except Exception:
+        return n
+    if v >= 500 and (v / 100.0) < 200:
+        return v / 100.0
+    return v
+
 def _fix_item_price(item: dict) -> dict:
     if not isinstance(item, dict):
         return item
     raw = item.get("price", "")
+    if isinstance(raw, (int, float)):
+        n = _repair_inflated_numeric(float(raw))
+        item["price"] = format_eur(n)
+        return item
     n = parse_eur_strict(raw)
     if n is None:
         return item
@@ -488,13 +501,13 @@ def api_search():
 def api_suggest():
     q = (request.args.get("q") or "").strip()
     if not q: return jsonify({"items": []})
-    return jsonify({"items": scraper.suggest_titles(q, limit=10)})
+    return jsonify({"items": [ _fix_item_price(x) for x in scraper.suggest_titles(q, limit=10) ]})
 
 @app.route("/api/tcg/suggest")
 def api_tcg_suggest():
     q = (request.args.get("q") or "").strip()
     if not q: return jsonify({"items": []})
-    return jsonify({"items": scraper_pokemon.search_pokemon_tcg(q, page_size=12)})
+    return jsonify({"items": [ _fix_item_price(x) for x in scraper_pokemon.search_pokemon_tcg(q, page_size=12) ]})
 
 @app.route("/api/tcg/card")
 def api_tcg_card():
