@@ -52,15 +52,46 @@ def _upgrade_image(url: str, level: int = 1) -> str:
         pass
     return url
 
-def _parse_price_to_float(s: str):
+def _parse_price_to_float(s: str) -> float | None:
+    """Robustly parse a price string that could be in US/UK or European format."""
     if s is None: return None
-    m = re.search(r"[\d,.]+", str(s))
-    if not m: return None
-    val = m.group(0)
-    try: return float(val.replace(",", ""))
-    except ValueError:
-        try: return float(val.replace(".", "").replace(",", "."))
-        except ValueError: return None
+    
+    original_str = str(s).strip()
+    
+    # Clean up string
+    clean_s = original_str.replace("€", "").replace("$", "")
+    if not clean_s:
+        return None
+
+    last_dot_pos = clean_s.rfind('.')
+    last_comma_pos = clean_s.rfind(',')
+    
+    # Determine number format and clean the string
+    if last_comma_pos > last_dot_pos:
+        # European format (e.g., "1.234,56"): dot is thousands, comma is decimal
+        clean_s = clean_s.replace('.', '').replace(',', '.')
+    else:
+        # US format (e.g., "1,234.56"): comma is thousands, dot is decimal
+        clean_s = clean_s.replace(',', '')
+        
+    try:
+        price = float(clean_s)
+
+        # Sanity check for a likely scraping error, e.g., "51,99" becomes "51,999".
+        # This heuristic checks if the original string was in the format "dd,ddd".
+        parts = original_str.replace("€", "").replace("$", "").split(',')
+        if (price > 1000 and 
+            original_str.count(',') == 1 and 
+            original_str.count('.') == 0 and 
+            len(parts) == 2 and len(parts[1]) == 3 and
+            len(parts[0]) > 1):
+             # This pattern likely means "xx,yyy" should have been "xx.yy".
+             # We correct this by dividing by 1000.
+             return price / 1000.0
+        
+        return price
+    except (ValueError, TypeError):
+        return None
 
 def _normalize_sealed_row(row: dict) -> dict:
     norm = {re.sub(r"\s+", "_", (k or "").strip().lower()): (v or "").strip()
@@ -365,10 +396,9 @@ def api_market_status():
     price_col = next((c for c in ['price', 'current_price'] if c in full_history.columns), None)
     if not title_col or not price_col:
         return jsonify({"error": "Could not find title/price columns"}), 500
-    full_history[price_col] = pd.to_numeric(
-        full_history[price_col].astype(str).str.replace('[€,]', '', regex=True),
-        errors='coerce'
-    )
+    
+    full_history[price_col] = full_history[price_col].apply(_parse_price_to_float)
+    
     full_history.dropna(subset=[price_col], inplace=True)
     market_status = []
     for category_name, keywords in categories.items():
@@ -415,8 +445,9 @@ def api_price_history():
             item_row = df[df['normalized_title'] == normalized_search_title]
             if not item_row.empty:
                 price_str = str(item_row.iloc[0][price_col])
-                price_val = float(price_str.replace('€', '').replace(',', '.').strip())
-                price_history.append({"date": file_date, "price": price_val})
+                price_val = _parse_price_to_float(price_str)
+                if price_val is not None:
+                    price_history.append({"date": file_date, "price": price_val})
         except Exception as e:
             print(f"Could not process file {file_path}: {e}")
     price_history.sort(key=lambda x: x['date'])
