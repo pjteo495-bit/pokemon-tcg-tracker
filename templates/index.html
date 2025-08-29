@@ -444,7 +444,7 @@
 
       const itemParams = new URLSearchParams({
           title: p.title || '',
-          price: p.price || '',
+          price: (() => { const n = parsePriceEUR(p.price); return Number.isFinite(n) ? repairIfInflated(p.price, n).toFixed(2) : (p.price || ''); })(),
           image_url: p.image_url || '',
           url: p.url || '',
           source: p.source || ''
