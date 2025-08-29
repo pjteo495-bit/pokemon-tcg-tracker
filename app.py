@@ -1,65 +1,9 @@
 # Force-refresh deployment 2025-08-28-v10-GLOBAL-RELATED
 import sys, re, os, csv, glob, random, threading, unicodedata
-import re
 from flask import Flask, render_template, request, jsonify
 from datetime import datetime, timedelta
 import pandas as pd
 import pytz
-
-# --- Price normalization helpers (API guard) ---
-_PRICE_BAD_A = re.compile(r"^\s*\d{1,2}\.\d{3},00\s*$")  # e.g. "2.900,00"
-_PRICE_BAD_B = re.compile(r"^\s*\d{3},00\s*$")             # e.g. "590,00"
-
-def parse_eur_strict(s: str):
-    if s is None: return None
-    t = str(s).strip().replace("€","").replace("EUR","").strip()
-    if "." in t and "," in t and t.index(".") < t.index(","):
-        t = re.sub(r"\.(?=\d{3}(?:\D|$))", "", t)
-        t = t.replace(",", ".")
-    elif "," in t and "." not in t:
-        t = t.replace(",", ".")
-    m = re.search(r"\d+(?:\.\d+)?", t)
-    return float(m.group(0)) if m else None
-
-def format_eur(n: float) -> str:
-    return "€" + f"{n:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-
-def _repair_inflated_numeric(n: float) -> float:
-    # (unchanged)
-
-    try:
-        v = float(n)
-    except Exception:
-        return n
-    if v >= 500 and (v / 100.0) < 200:
-        return v / 100.0
-    return v
-
-
-def _fix_item_price(item: dict) -> dict:
-    if not isinstance(item, dict):
-        return item
-    raw = item.get("price", "")
-    src = (item.get("source") or item.get("website") or "").lower()
-    # Numeric price path
-    if isinstance(raw, (int, float)):
-        n = float(raw)
-        n = _repair_vendora_numeric(n) if src == "vendora" else _repair_inflated_numeric(n)
-        item["price"] = format_eur(n)
-        return item
-    # String price path
-    n = parse_eur_strict(raw)
-    if n is None:
-        return item
-    raw_digits = re.sub(r"[^\d,\.]", "", str(raw))
-    if _PRICE_BAD_A.match(raw_digits) or _PRICE_BAD_B.match(raw_digits):
-        n = n / 100.0
-    item["price"] = format_eur(n)
-    return item
-
-
-
-
 
 # --- Local Imports ---
 try:
@@ -493,7 +437,7 @@ def api_home():
     page_size = 24
     all_items = scraper.search_products_all("", sort=sort)
     start, end = (page - 1) * page_size, (page - 1) * page_size + page_size
-    return jsonify({"items": [ _fix_item_price(x) for x in all_items[start:end] ], "has_more": end < len(all_items), "total": len(all_items)})
+    return jsonify({"items": all_items[start:end], "has_more": end < len(all_items), "total": len(all_items)})
 
 @app.route("/api/search")
 def api_search():
@@ -504,19 +448,19 @@ def api_search():
     page_size = 24
     all_items = scraper.search_products_all(q, sort=sort)
     start, end = (page - 1) * page_size, (page - 1) * page_size + page_size
-    return jsonify({"items": [ _fix_item_price(x) for x in all_items[start:end] ], "has_more": end < len(all_items), "total": len(all_items)})
+    return jsonify({"items": all_items[start:end], "has_more": end < len(all_items), "total": len(all_items)})
 
 @app.route("/api/suggest")
 def api_suggest():
     q = (request.args.get("q") or "").strip()
     if not q: return jsonify({"items": []})
-    return jsonify({"items": [ _fix_item_price(x) for x in scraper.suggest_titles(q, limit=10) ]})
+    return jsonify({"items": scraper.suggest_titles(q, limit=10)})
 
 @app.route("/api/tcg/suggest")
 def api_tcg_suggest():
     q = (request.args.get("q") or "").strip()
     if not q: return jsonify({"items": []})
-    return jsonify({"items": [ _fix_item_price(x) for x in scraper_pokemon.search_pokemon_tcg(q, page_size=12) ]})
+    return jsonify({"items": scraper_pokemon.search_pokemon_tcg(q, page_size=12)})
 
 @app.route("/api/tcg/card")
 def api_tcg_card():
@@ -562,14 +506,3 @@ def api_tcg_random_trending():
 
 if __name__ == "__main__":
     app.run(debug=True, use_reloader=True)
-
-
-def _repair_vendora_numeric(n: float) -> float:
-    try:
-        v = float(n)
-    except Exception:
-        return n
-    # If Vendora and price looks like x100 for sub-€4 items, fix it
-    if v >= 50 and v < 400 and (v / 100.0) < 4.0:
-        return v / 100.0
-    return v
