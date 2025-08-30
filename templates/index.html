@@ -162,6 +162,17 @@
   textarea.form-input {
       resize: vertical;
   }
+  .form-status {
+      margin-top: 15px;
+      font-weight: 600;
+      min-height: 1.2em;
+  }
+  .form-status.success {
+      color: var(--poke-green);
+  }
+  .form-status.error {
+      color: var(--poke-red);
+  }
 
 
   .toolbar{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap; margin-bottom: 24px;}
@@ -445,13 +456,14 @@
             <p class="contact-info">
                 Contact us directly at <a href="https://www.instagram.com/pokegr_tcg/" target="_blank" rel="noopener">Instagram</a> or by email at <a href="mailto:pokegrtcg@gmail.com">pokegrtcg@gmail.com</a>.
             </p>
-            <form action="https://formsubmit.co/pokegrtcg@gmail.com" method="POST" class="contact-form">
+            <form id="contactForm" action="https://formsubmit.co/pokegrtcg@gmail.com" method="POST" class="contact-form">
                 <input type="hidden" name="_subject" value="New Inquiry from POKEGR TCG Tracker">
                 <input type="hidden" name="_captcha" value="false">
                 <input type="email" name="email" class="form-input" placeholder="Your Email Address" required>
                 <textarea name="message" class="form-input" placeholder="Your message..." rows="5" required></textarea>
                 <button type="submit" class="btn">Send Message</button>
             </form>
+            <div id="formStatus" class="form-status"></div>
         </div>
 
         <div id="marketStatus" class="market-status" style="display: none;">
@@ -752,6 +764,8 @@
     const toggleMarketStatusBtn = document.getElementById('toggleMarketStatusBtn');
     const toggleContactBtn = document.getElementById('toggleContactBtn');
     const contactSection = document.getElementById('contactSection');
+    const contactForm = document.getElementById('contactForm');
+    const formStatus = document.getElementById('formStatus');
 
     let currentQuery = '';
     let currentPage = 1;
@@ -850,6 +864,43 @@
             contactSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     });
+
+    if (contactForm) {
+        contactForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const submitButton = this.querySelector('button[type="submit"]');
+            
+            submitButton.disabled = true;
+            submitButton.textContent = 'Sending...';
+            formStatus.textContent = '';
+            formStatus.className = 'form-status';
+
+            fetch(this.action, {
+                method: 'POST',
+                body: formData,
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(response => {
+                if (response.ok) {
+                    formStatus.textContent = "Thank you! Your message has been sent.";
+                    formStatus.classList.add('success');
+                    contactForm.reset();
+                } else {
+                    throw new Error('Network response was not ok.');
+                }
+            })
+            .catch(error => {
+                console.error('Form submission error:', error);
+                formStatus.textContent = "Oops! Something went wrong. Please try again.";
+                formStatus.classList.add('error');
+            })
+            .finally(() => {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Send Message';
+            });
+        });
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
         const urlParams = new URLSearchParams(window.location.search);
