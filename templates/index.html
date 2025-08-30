@@ -51,6 +51,25 @@
     border-bottom: 1px solid var(--border);
     margin-bottom: 2rem;
   }
+  .logo-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .instagram-follow {
+      text-decoration: none;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      margin-top: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: color .2s ease;
+  }
+  .instagram-follow:hover {
+      color: var(--text);
+  }
   .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
   .poke-ball { width: 42px; height: 42px; }
   .logo h1 { margin: 0; font-size: 28px; font-weight: 800; color: var(--text); }
@@ -264,10 +283,15 @@
     <div class="wrap">
       <header class="header">
         <button class="mobile-nav-toggle" id="mobileNavOpen"><i class="fas fa-bars"></i></button>
-        <a href="/" class="logo">
-            <img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="Pokegr Logo" class="poke-ball">
-            <h1>POKEGR</h1>
-        </a>
+        <div class="logo-wrapper">
+            <a href="/" class="logo">
+                <img src="https://i.ibb.co/fYS2Brhp/pikachu-tsolias.png" alt="Pokegr Logo" class="poke-ball">
+                <h1>POKEGR</h1>
+            </a>
+            <a href="https://www.instagram.com/pokegr_tcg/" target="_blank" rel="noopener" class="instagram-follow">
+                Follow Us on Instagram: <i class="fab fa-instagram"></i>
+            </a>
+        </div>
         <div class="header-spacer"></div>
         <div class="nav-buttons">
             <a href="/tcg-tracker" class="nav-btn"><i class="fas fa-search"></i> <span>TCG Tracker</span></a>
@@ -279,9 +303,6 @@
 
       {% if item is defined %}
 
-      <!-- ======================= -->
-      <!-- == ITEM DETAIL VIEW  == -->
-      <!-- ======================= -->
       <div class="toolbar">
         <div class="search">
           <input id="q" type="text" placeholder="Search products and cards..." autocomplete="off"/>
@@ -347,9 +368,6 @@
 
       {% else %}
 
-      <!-- ======================= -->
-      <!-- == MAIN SEARCH VIEW  == -->
-      <!-- ======================= -->
       <div class="hero">
         <h2 class="hero-title">POKEGR TCG TRACKER</h2>
         <div class="subtitle">Catch the best Greek Pokémon TCG prices — fast.</div>
