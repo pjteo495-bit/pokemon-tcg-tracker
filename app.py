@@ -1,5 +1,5 @@
 # Force-refresh deployment 2025-08-28-v10-GLOBAL-RELATED
-import sys, re, os, csv, glob, random, threading, unicodedata, json, time
+import sys, re, os, csv, glob, random, threading, unicodedata
 from flask import Flask, render_template, request, jsonify
 from datetime import datetime, timedelta
 import pandas as pd
@@ -21,170 +21,6 @@ app = Flask(__name__, template_folder="templates")
 
 # ---- Config ----
 USD_TO_EUR = float(os.environ.get("USD_TO_EUR", "0.86"))
-
-# ---- Caching Engine for History and Market Status ----
-CACHE_LOCK = threading.Lock()
-
-# In-memory cache dictionaries
-__price_history_cache = {}
-__market_status_cache = {"timestamp": 0, "data": []}
-
-# On-disk cache file paths
-HISTORY_CACHE_PATH = os.path.join(app.root_path, "cache_price_history.json")
-STATUS_CACHE_PATH = os.path.join(app.root_path, "cache_market_status.json")
-
-# Cache Time-To-Live (TTL) in seconds (e.g., 6 hours)
-STATUS_CACHE_TTL = 6 * 3600 
-
-def _get_latest_mtime(directory_path, extensions=('.csv', '.xlsx')):
-    """Gets the most recent modification time of files in a directory."""
-    latest_mtime = 0
-    if not os.path.isdir(directory_path):
-        return 0
-    try:
-        files = glob.glob(os.path.join(directory_path, "*"))
-        for file_path in files:
-            if file_path.endswith(extensions):
-                try:
-                    mtime = os.path.getmtime(file_path)
-                    if mtime > latest_mtime:
-                        latest_mtime = mtime
-                except OSError:
-                    continue
-    except Exception as e:
-        print(f"Error checking directory mtime {directory_path}: {e}")
-    return latest_mtime
-
-def _update_price_history_cache_if_needed():
-    """
-    Checks if the on-disk price history cache is stale and regenerates it if so.
-    Loads the cache into memory for ultra-fast lookups.
-    """
-    global __price_history_cache
-    with CACHE_LOCK:
-        history_dir = os.path.join(app.root_path, "Greek_Prices_History")
-        
-        # Determine if cache regeneration is needed
-        latest_data_mtime = _get_latest_mtime(history_dir)
-        cache_mtime = os.path.getmtime(HISTORY_CACHE_PATH) if os.path.exists(HISTORY_CACHE_PATH) else 0
-
-        if latest_data_mtime > cache_mtime or not __price_history_cache:
-            print("Regenerating price history cache...")
-            
-            # --- Regeneration Logic ---
-            all_history = {} # Use dict for efficient lookups
-            files = glob.glob(os.path.join(history_dir, "*.xlsx")) + glob.glob(os.path.join(history_dir, "*.csv"))
-            for file_path in files:
-                try:
-                    date_str = os.path.splitext(os.path.basename(file_path))[0]
-                    file_datetime = parse_date_from_filename(date_str)
-                    if not file_datetime: continue
-                    file_date = file_datetime.strftime("%Y-%m-%d")
-                    
-                    df = pd.read_csv(file_path, encoding='utf-8-sig') if file_path.lower().endswith('.csv') else pd.read_excel(file_path)
-                    df.columns = [str(c).lower().strip() for c in df.columns]
-
-                    title_col = next((c for c in ['item_title', 'title', 'name'] if c in df.columns), None)
-                    price_col = next((c for c in ['price', 'current_price'] if c in df.columns), None)
-                    if not title_col or not price_col: continue
-
-                    df['normalized_title'] = df[title_col].apply(normalize_title_for_history)
-                    
-                    for _, row in df.iterrows():
-                        norm_title = row['normalized_title']
-                        price_val = _parse_price_to_float(str(row[price_col]))
-                        if norm_title and price_val is not None:
-                            if norm_title not in all_history:
-                                all_history[norm_title] = []
-                            all_history[norm_title].append({"date": file_date, "price": price_val})
-                except Exception as e:
-                    print(f"Cache Gen: Could not process {file_path}: {e}")
-
-            # Sort history for each item
-            for title in all_history:
-                all_history[title].sort(key=lambda x: x['date'])
-            
-            # Write to disk and update in-memory cache
-            try:
-                with open(HISTORY_CACHE_PATH, 'w', encoding='utf-8') as f:
-                    json.dump(all_history, f)
-                __price_history_cache = all_history
-                print("Price history cache regenerated successfully.")
-            except Exception as e:
-                print(f"Error writing price history cache file: {e}")
-
-        # If cache is on disk but not in memory, load it
-        elif not __price_history_cache:
-            try:
-                with open(HISTORY_CACHE_PATH, 'r', encoding='utf-8') as f:
-                    __price_history_cache = json.load(f)
-                print("Loaded price history cache from disk.")
-            except Exception as e:
-                print(f"Error loading price history cache from disk: {e}")
-
-def _update_market_status_cache_if_needed():
-    """
-    Checks if the market status cache is older than its TTL (Time-To-Live).
-    If it is, regenerates it by processing recent history files.
-    """
-    global __market_status_cache
-    with CACHE_LOCK:
-        now = time.time()
-        is_stale = (now - __market_status_cache.get("timestamp", 0)) > STATUS_CACHE_TTL
-        
-        if is_stale:
-            print("Regenerating market status cache...")
-
-            # --- Regeneration Logic (original function body) ---
-            history_dir = "Greek_Prices_History"
-            categories = {
-                "Booster Packs": ["Booster Pack"], "Booster Box": ["Booster Box"],
-                "Elite Trainer Box": ["Elite Trainer Box", "ETB"], "Binders": ["Binder"],
-                "Collections": ["Collection"], "Tins": ["Tin"], "Blisters": ["Blister"],
-                "Sleeves": ["Sleeves"], "Booster Bundles": ["Booster Bundle"], "Decks": ["Deck"]
-            }
-            cutoff_date = datetime.now() - timedelta(days=30)
-            all_data = []
-            files = glob.glob(os.path.join(history_dir, "*.xlsx")) + glob.glob(os.path.join(history_dir, "*.csv"))
-            for file_path in files:
-                try:
-                    file_datetime = parse_date_from_filename(os.path.splitext(os.path.basename(file_path))[0])
-                    if not file_datetime or file_datetime < cutoff_date: continue
-                    df = pd.read_csv(file_path, encoding='utf-8-sig') if file_path.endswith('.csv') else pd.read_excel(file_path)
-                    df.columns = [str(c).lower().strip() for c in df.columns]
-                    df['date'] = file_datetime
-                    all_data.append(df)
-                except Exception as e:
-                    print(f"Skipping history file {file_path}: {e}")
-            
-            market_status_data = []
-            if all_data:
-                full_history = pd.concat(all_data, ignore_index=True)
-                title_col = next((c for c in ['item_title', 'title', 'name'] if c in full_history.columns), None)
-                price_col = next((c for c in ['price', 'current_price'] if c in full_history.columns), None)
-                if title_col and price_col:
-                    full_history[price_col] = full_history[price_col].apply(_parse_price_to_float)
-                    full_history.dropna(subset=[price_col], inplace=True)
-                    for category_name, keywords in categories.items():
-                        cat_df = full_history[full_history[title_col].str.contains('|'.join(keywords), case=False, na=False)]
-                        if cat_df.empty: continue
-                        changes = []
-                        for _, group in cat_df.groupby(title_col):
-                            if len(group) > 1:
-                                group = group.sort_values('date')
-                                start_price, end_price = group.iloc[0][price_col], group.iloc[-1][price_col]
-                                if start_price > 0:
-                                    changes.append(((end_price - start_price) / start_price) * 100)
-                        status, explanation = 'yellow', '(Prices Stable)'
-                        if changes:
-                            avg_change = sum(changes) / len(changes)
-                            if avg_change > 2.5: status, explanation = 'green', '(Prices Rising)'
-                            elif avg_change < -2.5: status, explanation = 'red', '(Prices Lowering)'
-                        market_status_data.append({"category": category_name, "status": status, "explanation": explanation})
-
-            # Update in-memory cache
-            __market_status_cache = {"timestamp": now, "data": market_status_data}
-            print("Market status cache regenerated successfully.")
 
 # ---------- Generic helpers ----------
 def parse_date_from_filename(name):
@@ -523,32 +359,98 @@ def api_global_related():
 
     return jsonify({"items": merged})
 
-# ---------- Market / history / other routes (Now with Caching) ----------
+# ---------- Market / history / other routes (unchanged) ----------
 @app.route("/api/market-status")
 def api_market_status():
-    """Returns the market status, using a time-based cache."""
-    _update_market_status_cache_if_needed()
-    data = __market_status_cache.get("data", [])
-    if not data:
+    history_dir = "Greek_Prices_History"
+    categories = {
+        "Booster Packs": ["Booster Pack"],
+        "Booster Box": ["Booster Box"],
+        "Elite Trainer Box": ["Elite Trainer Box", "ETB"],
+        "Binders": ["Binder"],
+        "Collections": ["Collection"],
+        "Tins": ["Tin"],
+        "Blisters": ["Blister"],
+        "Sleeves": ["Sleeves"],
+        "Booster Bundles": ["Booster Bundle"],
+        "Decks": ["Deck"]
+    }
+    cutoff_date = datetime.now() - timedelta(days=30)
+    all_data = []
+    files = glob.glob(os.path.join(history_dir, "*.xlsx")) + glob.glob(os.path.join(history_dir, "*.csv"))
+    for file_path in files:
+        try:
+            file_datetime = parse_date_from_filename(os.path.splitext(os.path.basename(file_path))[0])
+            if not file_datetime or file_datetime < cutoff_date:
+                continue
+            df = pd.read_csv(file_path, encoding='utf-8-sig') if file_path.endswith('.csv') else pd.read_excel(file_path)
+            df.columns = [str(c).lower().strip() for c in df.columns]
+            df['date'] = file_datetime
+            all_data.append(df)
+        except Exception as e:
+            print(f"Skipping history file {file_path}: {e}")
+    if not all_data:
         return jsonify({"error": "No recent history data found"}), 404
-    return jsonify(data)
+    full_history = pd.concat(all_data, ignore_index=True)
+    title_col = next((c for c in ['item_title', 'title', 'name'] if c in full_history.columns), None)
+    price_col = next((c for c in ['price', 'current_price'] if c in full_history.columns), None)
+    if not title_col or not price_col:
+        return jsonify({"error": "Could not find title/price columns"}), 500
+    
+    full_history[price_col] = full_history[price_col].apply(_parse_price_to_float)
+    
+    full_history.dropna(subset=[price_col], inplace=True)
+    market_status = []
+    for category_name, keywords in categories.items():
+        cat_df = full_history[full_history[title_col].str.contains('|'.join(keywords), case=False, na=False)]
+        if cat_df.empty: continue
+        changes = []
+        for _, group in cat_df.groupby(title_col):
+            if len(group) > 1:
+                group = group.sort_values('date')
+                start_price = group.iloc[0][price_col]
+                end_price   = group.iloc[-1][price_col]
+                if start_price > 0:
+                    changes.append(((end_price - start_price) / start_price) * 100)
+        status, explanation = 'yellow', '(Prices Stable)'
+        if changes:
+            avg_change = sum(changes) / len(changes)
+            if   avg_change >  2.5: status, explanation = 'green', '(Prices Rising)'
+            elif avg_change < -2.5: status, explanation = 'red',   '(Prices Lowering)'
+        market_status.append({"category": category_name, "status": status, "explanation": explanation})
+    return jsonify(market_status)
 
 @app.route("/api/price-history")
 def api_price_history():
-    """
-    Returns price history for an item using a fast, file-based cache
-    that updates automatically when new data is added.
-    """
-    _update_price_history_cache_if_needed()
     item_title = request.args.get("title", "").strip()
-    if not item_title:
-        return jsonify({"error": "Missing item title"}), 400
-    
+    if not item_title: return jsonify({"error": "Missing item title"}), 400
     normalized_search_title = normalize_title_for_history(item_title)
-    
-    # Instant lookup from the in-memory cache
-    price_history = __price_history_cache.get(normalized_search_title, [])
-    
+    history_dir = "Greek_Prices_History"
+    price_history = []
+    if not os.path.isdir(history_dir): return jsonify({"error": "History directory not found"}), 500
+    files = glob.glob(os.path.join(history_dir, "*.xlsx")) + glob.glob(os.path.join(history_dir, "*.csv"))
+    for file_path in files:
+        try:
+            filename = os.path.basename(file_path)
+            date_str = os.path.splitext(filename)[0]
+            file_datetime = parse_date_from_filename(date_str)
+            if not file_datetime: continue
+            file_date = file_datetime.strftime("%Y-%m-%d")
+            df = pd.read_csv(file_path, encoding='utf-8-sig') if file_path.lower().endswith('.csv') else pd.read_excel(file_path)
+            df.columns = [str(c).lower().strip() for c in df.columns]
+            title_col = next((c for c in ['item_title', 'title', 'name'] if c in df.columns), None)
+            price_col = next((c for c in ['price', 'current_price'] if c in df.columns), None)
+            if not title_col or not price_col: continue
+            df['normalized_title'] = df[title_col].apply(normalize_title_for_history)
+            item_row = df[df['normalized_title'] == normalized_search_title]
+            if not item_row.empty:
+                price_str = str(item_row.iloc[0][price_col])
+                price_val = _parse_price_to_float(price_str)
+                if price_val is not None:
+                    price_history.append({"date": file_date, "price": price_val})
+        except Exception as e:
+            print(f"Could not process file {file_path}: {e}")
+    price_history.sort(key=lambda x: x['date'])
     return jsonify(price_history)
 
 @app.route("/api/related-products")
@@ -634,7 +536,4 @@ def api_tcg_random_trending():
     return jsonify({"cards": random.sample(cards, 10) if len(cards) > 10 else cards})
 
 if __name__ == "__main__":
-    # Prime the caches on startup in a background thread
-    threading.Thread(target=_update_price_history_cache_if_needed, daemon=True).start()
-    threading.Thread(target=_update_market_status_cache_if_needed, daemon=True).start()
     app.run(debug=True, use_reloader=True)
